@@ -1,0 +1,32 @@
+[package]
+name = "sview"
+version = "0.1.0"
+edition = "2021"
+description = "A TUI for monitoring Cardano nodes, written in Rust"
+license = "Apache-2.0"
+repository = "https://github.com/sandstonepool/sview"
+keywords = ["cardano", "tui", "monitoring", "blockchain"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for Prometheus metrics (using rustls to avoid openssl dependency)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Logging (optional, for debugging)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
