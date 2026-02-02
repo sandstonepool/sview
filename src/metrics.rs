@@ -105,6 +105,8 @@ pub struct NodeMetrics {
     /// KES periods per operational certificate
     pub kes_periods_per_cert: Option<u64>,
     // Forging metrics (block producers)
+    /// Whether forging/block production is enabled (0=relay, 1=BP)
+    pub forging_enabled: Option<bool>,
     /// Is node a leader
     pub is_leader: Option<bool>,
     /// Blocks adopted by the node
@@ -199,13 +201,18 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "cardano_node_metrics_density_real" => {
                     metrics.density = Some(value);
                 }
-                "cardano_node_metrics_txsProcessedNum_int" => {
+                // txsProcessedNum can be _int (legacy) or _counter (current)
+                "cardano_node_metrics_txsProcessedNum_int"
+                | "cardano_node_metrics_txsProcessedNum_counter" => {
                     metrics.tx_processed = Some(value as u64);
                 }
-                "cardano_node_metrics_forks_int" => {
+                // forks is a counter in current cardano-node source
+                "cardano_node_metrics_forks_int" | "cardano_node_metrics_forks_counter" => {
                     metrics.forks = Some(value as u64);
                 }
-                "cardano_node_metrics_slotsMissedNum_int" => {
+                // slotsMissed naming varies between versions
+                "cardano_node_metrics_slotsMissedNum_int"
+                | "cardano_node_metrics_slotsMissed_int" => {
                     metrics.missed_slots = Some(value as u64);
                 }
 
@@ -253,27 +260,39 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
 
                 // Block fetch client metrics
-                "cardano_node_metrics_blockfetchclient_blockdelay_s" => {
+                // blockdelay uses _real suffix in current cardano-node (DoubleM type)
+                "cardano_node_metrics_blockfetchclient_blockdelay_s"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_real" => {
                     metrics.block_delay_s = Some(value);
                 }
-                "cardano_node_metrics_served_block_count_int" => {
+                // served.block can be _int (legacy) or _counter (current)
+                "cardano_node_metrics_served_block_count_int"
+                | "cardano_node_metrics_served_block_counter" => {
                     metrics.blocks_served = Some(value as u64);
                 }
-                "cardano_node_metrics_blockfetchclient_lateblocks" => {
+                // lateblocks is a counter
+                "cardano_node_metrics_blockfetchclient_lateblocks"
+                | "cardano_node_metrics_blockfetchclient_lateblocks_counter" => {
                     metrics.blocks_late = Some(value as u64);
                 }
-                "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne" => {
+                // CDF metrics use _real suffix (DoubleM type)
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne_real" => {
                     metrics.block_delay_cdf_1s = Some(value);
                 }
-                "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree" => {
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree_real" => {
                     metrics.block_delay_cdf_3s = Some(value);
                 }
-                "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive" => {
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive_real" => {
                     metrics.block_delay_cdf_5s = Some(value);
                 }
 
                 // Uptime metrics
-                "cardano_node_metrics_nodeStartTime_int" => {
+                // nodeStartTime vs node.start.time naming varies by cardano-node version
+                "cardano_node_metrics_nodeStartTime_int"
+                | "cardano_node_metrics_node_start_time_int" => {
                     metrics.node_start_time = Some(value as u64);
                 }
                 "cardano_node_metrics_upTime_ns" | "cardano_node_metrics_Stat_startTime" => {
@@ -315,14 +334,18 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.p2p.hot_peers = Some(value as u64);
                 }
 
-                // Peer selection metrics
-                "cardano_node_metrics_peerSelection_cold" => {
+                // Peer selection metrics (CamelCase in current cardano-node)
+                // Handle both lowercase (legacy) and CamelCase (current) variants
+                "cardano_node_metrics_peerSelection_cold"
+                | "cardano_node_metrics_peerSelection_Cold_int" => {
                     metrics.p2p.cold_peers = Some(value as u64);
                 }
-                "cardano_node_metrics_peerSelection_warm" => {
+                "cardano_node_metrics_peerSelection_warm"
+                | "cardano_node_metrics_peerSelection_Warm_int" => {
                     metrics.p2p.warm_peers = Some(value as u64);
                 }
-                "cardano_node_metrics_peerSelection_hot" => {
+                "cardano_node_metrics_peerSelection_hot"
+                | "cardano_node_metrics_peerSelection_Hot_int" => {
                     metrics.p2p.hot_peers = Some(value as u64);
                 }
 
@@ -346,10 +369,16 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
 
                 // Forging metrics (block producers)
+                // forging_enabled: 0 = relay, 1 = block producer
+                "cardano_node_metrics_forging_enabled_int" => {
+                    metrics.forging_enabled = Some(value > 0.0);
+                }
                 "cardano_node_metrics_Forge_node_is_leader_int" => {
                     metrics.is_leader = Some(value > 0.0);
                 }
-                "cardano_node_metrics_Forge_adopted_int" => {
+                // blocksForged naming varies between ForgingStats and Forge tracers
+                "cardano_node_metrics_Forge_adopted_int"
+                | "cardano_node_metrics_blocksForged_int" => {
                     metrics.blocks_adopted = Some(value as u64);
                 }
                 "cardano_node_metrics_Forge_didnt_adopt_int" => {
@@ -357,6 +386,12 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
                 "cardano_node_metrics_Forge_forge_about_to_lead_int" => {
                     metrics.about_to_lead = Some(value as u64);
+                }
+                // nodeCannotForge and nodeIsLeader from ForgingStats
+                "cardano_node_metrics_nodeIsLeader_int" => {
+                    if metrics.is_leader.is_none() {
+                        metrics.is_leader = Some(value > 0.0);
+                    }
                 }
 
                 _ => {}
