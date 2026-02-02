@@ -5,6 +5,7 @@
 
 mod app;
 mod config;
+mod history;
 mod metrics;
 mod ui;
 
@@ -18,13 +19,13 @@ use ratatui::prelude::*;
 use std::io;
 use std::time::Duration;
 
-use app::App;
+use app::{App, AppMode};
 use config::Config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize configuration from environment
-    let config = Config::from_env();
+    // Load configuration from CLI arguments and environment variables
+    let config = Config::load();
 
     // Setup terminal
     enable_raw_mode()?;
@@ -62,12 +63,19 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         terminal.draw(|frame| ui::draw(frame, app))?;
 
         // Handle input with timeout for periodic refresh
-        if event::poll(Duration::from_millis(1000))? {
+        if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    // In help mode, any key closes help
+                    if app.mode == AppMode::Help {
+                        app.toggle_help();
+                        continue;
+                    }
+
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                         KeyCode::Char('r') => app.fetch_metrics().await,
+                        KeyCode::Char('?') => app.toggle_help(),
                         _ => {}
                     }
                 }

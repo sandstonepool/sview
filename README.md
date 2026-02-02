@@ -4,6 +4,7 @@ A TUI for monitoring Cardano nodes, written in Rust.
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
+[![CI](https://github.com/sandstonepool/sview/actions/workflows/ci.yml/badge.svg)](https://github.com/sandstonepool/sview/actions/workflows/ci.yml)
 
 ## Overview
 
@@ -16,13 +17,18 @@ experience.
 
 ## Features
 
-- 📊 Real-time node metrics display
+- 📊 Real-time node metrics display with sparkline history
 - 🔍 Auto-detection of node type (cardano-node, Dingo, Amaru)
+- 🚦 Color-coded health indicators (sync status, peer count, memory)
 - ⚡ Lightweight and fast — single binary, no runtime dependencies
 - 🎨 Clean, intuitive terminal interface
-- 🔧 12-factor configuration via environment variables
+- 🔧 Flexible configuration via CLI arguments or environment variables
 
 ## Installation
+
+### From Releases
+
+Download the latest binary for your platform from the [Releases](https://github.com/sandstonepool/sview/releases) page.
 
 ### From Source
 
@@ -45,23 +51,71 @@ cargo build --release
 sview
 
 # Custom Prometheus endpoint
-PROM_HOST=192.168.1.100 PROM_PORT=12798 sview
+sview --prom-host 192.168.1.100 --prom-port 12798
 
 # Set custom node name
-NODE_NAME="My Stake Pool" sview
+sview --node-name "My Stake Pool"
+
+# Using environment variables (still supported)
+PROM_HOST=192.168.1.100 NODE_NAME="My Stake Pool" sview
 ```
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q`, `Esc` | Quit |
+| `r` | Force refresh metrics |
+| `?` | Toggle help |
 
 ## Configuration
 
-Configuration is done via environment variables:
+Configuration can be done via CLI arguments or environment variables. CLI arguments take precedence.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_NAME` | Display name for the node | `Cardano Node` |
-| `CARDANO_NETWORK` | Network name (mainnet, preprod, preview) | `mainnet` |
-| `PROM_HOST` | Prometheus metrics host | `127.0.0.1` |
-| `PROM_PORT` | Prometheus metrics port | `12798` |
-| `PROM_TIMEOUT` | Request timeout in seconds | `3` |
+| CLI Argument | Environment Variable | Description | Default |
+|--------------|---------------------|-------------|---------|
+| `-n, --node-name` | `NODE_NAME` | Display name for the node | `Cardano Node` |
+| `--network` | `CARDANO_NETWORK` | Network name (mainnet, preprod, preview) | `mainnet` |
+| `--prom-host` | `PROM_HOST` | Prometheus metrics host | `127.0.0.1` |
+| `-p, --prom-port` | `PROM_PORT` | Prometheus metrics port | `12798` |
+| `--prom-timeout` | `PROM_TIMEOUT` | Request timeout in seconds | `3` |
+| `-r, --refresh-interval` | `REFRESH_INTERVAL` | Refresh interval in seconds | `2` |
+| `--history-length` | `HISTORY_LENGTH` | Data points to keep for sparklines | `60` |
+
+### Examples
+
+```bash
+# Monitor a remote node
+sview --prom-host 10.0.0.5 -n "Relay 1"
+
+# Slower refresh for low-bandwidth connections
+sview --refresh-interval 5 --prom-timeout 10
+
+# Full example with all options
+sview \
+  --node-name "My Block Producer" \
+  --network mainnet \
+  --prom-host 192.168.1.100 \
+  --prom-port 12798 \
+  --refresh-interval 2 \
+  --history-length 120
+```
+
+## Health Indicators
+
+sview uses color-coded indicators to show node health at a glance:
+
+| Color | Meaning |
+|-------|---------|
+| 🟢 Green | Healthy — operating normally |
+| 🟡 Yellow | Warning — needs attention |
+| 🔴 Red | Critical — action required |
+
+**Health thresholds:**
+
+- **Sync Progress**: Green ≥99.9%, Yellow ≥95%, Red <95%
+- **Connected Peers**: Green ≥5, Yellow ≥2, Red <2
+- **Memory Usage**: Green <12GB, Yellow <14GB, Red ≥14GB
 
 ## Requirements
 
