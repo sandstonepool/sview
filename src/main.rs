@@ -94,13 +94,33 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         continue;
                     }
 
+                    // In peer detail mode, handle specific keys
+                    if app.mode == AppMode::PeerDetail {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                app.toggle_peers().await;
+                            }
+                            KeyCode::Backspace | KeyCode::Left | KeyCode::Char('p') => {
+                                app.back_to_peer_list();
+                            }
+                            _ => {}
+                        }
+                        continue;
+                    }
+
                     // In peers mode, handle specific keys
                     if app.mode == AppMode::Peers {
                         match key.code {
-                            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('p') => {
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                app.toggle_peers().await;
+                            }
+                            KeyCode::Char('p') => {
                                 app.toggle_peers().await;
                             }
                             KeyCode::Char('r') => app.refresh_peers().await,
+                            KeyCode::Up | KeyCode::Char('k') => app.peer_list_up(),
+                            KeyCode::Down | KeyCode::Char('j') => app.peer_list_down(),
+                            KeyCode::Enter | KeyCode::Right => app.show_peer_detail(),
                             _ => {}
                         }
                         continue;

@@ -62,6 +62,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if app.mode == AppMode::Peers {
         draw_peers_view(frame, area, app, &palette);
     }
+
+    // Draw peer detail overlay if in peer detail mode
+    if app.mode == AppMode::PeerDetail {
+        draw_peer_detail_view(frame, area, app, &palette);
+    }
 }
 
 /// Draw the node selection tabs
@@ -843,7 +848,9 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
             Cell::from(""),
         ]));
     } else {
-        for peer in &sorted_peers {
+        for (idx, peer) in sorted_peers.iter().enumerate() {
+            let is_selected = idx == app.peer_list_selected;
+
             let dir_style = if peer.incoming {
                 Style::default().fg(palette.primary)
             } else {
@@ -877,7 +884,11 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
                 .cloned()
                 .unwrap_or_else(|| "—".to_string());
 
-            rows.push(Row::new(vec![
+            // Selection indicator
+            let selector = if is_selected { "▶" } else { " " };
+
+            let mut row = Row::new(vec![
+                Cell::from(Span::styled(selector, Style::default().fg(palette.primary))),
                 Cell::from(Span::styled(peer.direction_str().to_string(), dir_style)),
                 Cell::from(Span::styled(
                     peer.ip.clone(),
@@ -896,7 +907,14 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
                     queue_str,
                     Style::default().fg(palette.text_muted),
                 )),
-            ]));
+            ]);
+
+            // Highlight selected row
+            if is_selected {
+                row = row.style(Style::default().bg(Color::DarkGray));
+            }
+
+            rows.push(row);
         }
     }
 
@@ -922,6 +940,7 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
 
     // Create header row
     let header = Row::new(vec![
+        Cell::from(Span::styled(" ", Style::default())),
         Cell::from(Span::styled(
             "DIR",
             Style::default().fg(palette.primary).bold(),
@@ -953,6 +972,7 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
     let table = Table::new(
         rows,
         [
+            Constraint::Length(2),  // Selection
             Constraint::Length(4),  // DIR
             Constraint::Min(15),    // IP
             Constraint::Length(6),  // PORT
@@ -966,11 +986,152 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
         Block::default()
             .borders(Borders::ALL)
             .title(title)
-            .title_bottom(Line::from(" [p] close | [r] refresh ").centered())
+            .title_bottom(
+                Line::from(" [↑↓] select | [Enter] details | [p/Esc] close | [r] refresh ")
+                    .centered(),
+            )
             .border_style(Style::default().fg(palette.primary)),
     );
 
     frame.render_widget(table, popup_area);
+}
+
+/// Draw detailed view for a single selected peer
+fn draw_peer_detail_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let popup_area = centered_rect(70, 60, area);
+
+    // Clear the background
+    frame.render_widget(Clear, popup_area);
+
+    let peer = match app.selected_peer() {
+        Some(p) => p,
+        None => {
+            let msg = Paragraph::new("No peer selected").block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Peer Details ")
+                    .border_style(Style::default().fg(palette.primary)),
+            );
+            frame.render_widget(msg, popup_area);
+            return;
+        }
+    };
+
+    // Get location
+    let location = app
+        .peer_locations
+        .get(&peer.ip)
+        .cloned()
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    // Build detail lines
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "Connection Details",
+            Style::default().bold().underlined().fg(palette.primary),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  IP Address:    ", Style::default().fg(palette.text_muted)),
+            Span::styled(&peer.ip, Style::default().fg(palette.text).bold()),
+        ]),
+        Line::from(vec![
+            Span::styled("  Port:          ", Style::default().fg(palette.text_muted)),
+            Span::styled(peer.port.to_string(), Style::default().fg(palette.text)),
+        ]),
+        Line::from(vec![
+            Span::styled("  Location:      ", Style::default().fg(palette.text_muted)),
+            Span::styled(location, Style::default().fg(palette.tertiary)),
+        ]),
+        Line::from(vec![
+            Span::styled("  Direction:     ", Style::default().fg(palette.text_muted)),
+            Span::styled(
+                if peer.incoming {
+                    "Incoming"
+                } else {
+                    "Outgoing"
+                },
+                Style::default().fg(if peer.incoming {
+                    palette.primary
+                } else {
+                    palette.secondary
+                }),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Performance",
+            Style::default().bold().underlined().fg(palette.primary),
+        )),
+        Line::from(""),
+    ];
+
+    // RTT with color coding
+    let (rtt_str, rtt_color) = match peer.rtt_ms {
+        Some(rtt) if rtt < 50.0 => (format!("{:.2} ms (Excellent)", rtt), palette.healthy),
+        Some(rtt) if rtt < 100.0 => (format!("{:.2} ms (Good)", rtt), palette.warning),
+        Some(rtt) if rtt < 200.0 => (format!("{:.2} ms (Fair)", rtt), palette.warning),
+        Some(rtt) => (format!("{:.2} ms (Poor)", rtt), palette.critical),
+        None => ("Not available".to_string(), palette.text_muted),
+    };
+
+    lines.push(Line::from(vec![
+        Span::styled("  RTT Latency:   ", Style::default().fg(palette.text_muted)),
+        Span::styled(rtt_str, Style::default().fg(rtt_color)),
+    ]));
+
+    lines.push(Line::from(vec![
+        Span::styled("  State:         ", Style::default().fg(palette.text_muted)),
+        Span::styled(&peer.state, Style::default().fg(palette.healthy)),
+    ]));
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Buffers",
+        Style::default().bold().underlined().fg(palette.primary),
+    )));
+    lines.push(Line::from(""));
+
+    lines.push(Line::from(vec![
+        Span::styled("  Receive Queue: ", Style::default().fg(palette.text_muted)),
+        Span::styled(
+            format!("{} bytes", peer.recv_q),
+            Style::default().fg(if peer.recv_q > 0 {
+                palette.warning
+            } else {
+                palette.text
+            }),
+        ),
+    ]));
+
+    lines.push(Line::from(vec![
+        Span::styled("  Send Queue:    ", Style::default().fg(palette.text_muted)),
+        Span::styled(
+            format!("{} bytes", peer.send_q),
+            Style::default().fg(if peer.send_q > 0 {
+                palette.warning
+            } else {
+                palette.text
+            }),
+        ),
+    ]));
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Press [Backspace] or [←] to go back",
+        Style::default().fg(palette.text_muted).italic(),
+    )));
+
+    let detail = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" Peer: {} ", peer.ip))
+                .border_style(Style::default().fg(palette.primary)),
+        )
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(detail, popup_area);
 }
 
 // ============================================================================

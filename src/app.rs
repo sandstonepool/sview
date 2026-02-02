@@ -22,8 +22,10 @@ pub enum AppMode {
     #[default]
     Normal,
     Help,
-    /// Detailed peer list view
+    /// Peer list view with selection
     Peers,
+    /// Detailed view for a single peer
+    PeerDetail,
 }
 
 /// Health status indicators
@@ -338,6 +340,10 @@ pub struct App {
     geoip_service: GeoIPService,
     /// Cached peer locations (IP -> "City, CC")
     pub peer_locations: HashMap<String, String>,
+    /// Currently selected peer index in peer list
+    pub peer_list_selected: usize,
+    /// Scroll offset for peer list
+    pub peer_list_scroll: usize,
 }
 
 impl App {
@@ -358,6 +364,8 @@ impl App {
             theme: Theme::default(),
             geoip_service: GeoIPService::new(),
             peer_locations: HashMap::new(),
+            peer_list_selected: 0,
+            peer_list_scroll: 0,
         }
     }
 
@@ -427,7 +435,7 @@ impl App {
     pub fn toggle_help(&mut self) {
         self.mode = match self.mode {
             AppMode::Normal => AppMode::Help,
-            AppMode::Help | AppMode::Peers => AppMode::Normal,
+            AppMode::Help | AppMode::Peers | AppMode::PeerDetail => AppMode::Normal,
         };
     }
 
@@ -438,9 +446,12 @@ impl App {
                 // Refresh peer connections when entering peers view
                 self.nodes[self.selected_node].refresh_peer_connections();
                 self.fetch_peer_locations().await;
+                // Reset selection
+                self.peer_list_selected = 0;
+                self.peer_list_scroll = 0;
                 AppMode::Peers
             }
-            AppMode::Peers => AppMode::Normal,
+            AppMode::Peers | AppMode::PeerDetail => AppMode::Normal,
             AppMode::Help => AppMode::Normal,
         };
     }
@@ -449,6 +460,9 @@ impl App {
     pub async fn refresh_peers(&mut self) {
         self.nodes[self.selected_node].refresh_peer_connections();
         self.fetch_peer_locations().await;
+        // Reset selection after refresh
+        self.peer_list_selected = 0;
+        self.peer_list_scroll = 0;
     }
 
     /// Fetch geolocation for current peer IPs
@@ -462,6 +476,40 @@ impl App {
                 self.peer_locations.insert(ip, loc.short());
             }
         }
+    }
+
+    /// Move selection up in peer list
+    pub fn peer_list_up(&mut self) {
+        if self.peer_list_selected > 0 {
+            self.peer_list_selected -= 1;
+        }
+    }
+
+    /// Move selection down in peer list
+    pub fn peer_list_down(&mut self) {
+        let peer_count = self.nodes[self.selected_node].peer_connections.len();
+        if peer_count > 0 && self.peer_list_selected < peer_count - 1 {
+            self.peer_list_selected += 1;
+        }
+    }
+
+    /// Show details for selected peer
+    pub fn show_peer_detail(&mut self) {
+        let peer_count = self.nodes[self.selected_node].peer_connections.len();
+        if peer_count > 0 && self.peer_list_selected < peer_count {
+            self.mode = AppMode::PeerDetail;
+        }
+    }
+
+    /// Go back from peer detail to peer list
+    pub fn back_to_peer_list(&mut self) {
+        self.mode = AppMode::Peers;
+    }
+
+    /// Get the currently selected peer (if any)
+    pub fn selected_peer(&self) -> Option<&crate::sockets::PeerConnection> {
+        let peers = &self.nodes[self.selected_node].peer_connections;
+        peers.get(self.peer_list_selected)
     }
 
     /// Cycle to the next color theme
