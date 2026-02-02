@@ -6,8 +6,7 @@ use crate::app::{App, AppMode, HealthStatus};
 use crate::themes::Palette;
 use ratatui::{
     prelude::*,
-    symbols,
-    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Table, Tabs, Wrap},
 };
 
 /// Main draw function - renders the entire UI
@@ -48,7 +47,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     // Draw header with health indicators
     draw_header(frame, header_area, app, &palette);
 
-    // Draw main content - 2-row layout with sparklines
+    // Draw main content area
     draw_main_content(frame, main_area, app, &palette);
 
     // Draw footer
@@ -205,19 +204,19 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the main content area
 fn draw_main_content(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Two-row layout: gauges on top, metrics + sparklines below
+    // Two-row layout: gauges on top, metrics below
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Progress gauges
-            Constraint::Min(8),    // Metrics and sparklines
+            Constraint::Min(8),    // Metrics tables
         ])
         .split(area);
 
     // Top row: Epoch progress + Sync + Memory gauges
     draw_gauge_row(frame, chunks[0], app, palette);
 
-    // Bottom row: Metrics tables + Sparklines
+    // Bottom row: Metrics tables
     draw_metrics_and_sparklines(frame, chunks[1], app, palette);
 }
 
@@ -348,15 +347,15 @@ fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
     frame.render_widget(gauge, area);
 }
 
-/// Draw metrics tables and sparklines
+/// Draw metrics tables
 fn draw_metrics_and_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // 3-column layout: Chain | Network | Resources, with sparklines on right
+    // 3-column layout: Chain | Network | Resources
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(30), // Chain metrics
-            Constraint::Percentage(30), // Network metrics
-            Constraint::Percentage(40), // Resources + Sparklines
+            Constraint::Percentage(33), // Chain metrics
+            Constraint::Percentage(34), // Network metrics
+            Constraint::Percentage(33), // Resources
         ])
         .split(area);
 
@@ -563,18 +562,10 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
     frame.render_widget(table, area);
 }
 
-/// Draw resources with sparklines
+/// Draw resources section
 fn draw_resources_with_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(8), // Resource metrics
-            Constraint::Min(4),    // Sparklines
-        ])
-        .split(area);
-
-    draw_resource_metrics(frame, chunks[0], app, palette);
-    draw_sparklines(frame, chunks[1], app, palette);
+    // Draw resource metrics (sparklines removed)
+    draw_resource_metrics(frame, area, app, palette);
 }
 
 /// Draw resource metrics table
@@ -614,87 +605,6 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pal
     );
 
     frame.render_widget(table, area);
-}
-
-/// Draw sparklines for historical data
-fn draw_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let node = app.current_node();
-    let history = &node.history;
-
-    // Split into two sparklines side by side
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(area);
-
-    // Block height sparkline (show trend)
-    let block_data = history.block_height.as_slice();
-    if !block_data.is_empty() {
-        // Normalize to show relative changes
-        let min_val = block_data.iter().min().copied().unwrap_or(0);
-        let normalized: Vec<u64> = block_data
-            .iter()
-            .map(|v| v.saturating_sub(min_val))
-            .collect();
-
-        let sparkline = Sparkline::default()
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Block Height ")
-                    .border_style(Style::default().fg(palette.border)),
-            )
-            .data(&normalized)
-            .style(Style::default().fg(palette.sparkline))
-            .bar_set(symbols::bar::NINE_LEVELS);
-
-        frame.render_widget(sparkline, chunks[0]);
-    } else {
-        let empty = Paragraph::new("No history").block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Block Height ")
-                .border_style(Style::default().fg(palette.border)),
-        );
-        frame.render_widget(empty, chunks[0]);
-    }
-
-    // Memory sparkline
-    let mem_data = history.memory_used.as_slice();
-    if !mem_data.is_empty() {
-        // Normalize to fit in sparkline range
-        let max_val = mem_data.iter().max().copied().unwrap_or(1);
-        let scale = if max_val > 0 {
-            100.0 / max_val as f64
-        } else {
-            1.0
-        };
-        let normalized: Vec<u64> = mem_data
-            .iter()
-            .map(|v| (*v as f64 * scale) as u64)
-            .collect();
-
-        let sparkline = Sparkline::default()
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Memory ")
-                    .border_style(Style::default().fg(palette.border)),
-            )
-            .data(&normalized)
-            .style(Style::default().fg(palette.gauge))
-            .bar_set(symbols::bar::NINE_LEVELS);
-
-        frame.render_widget(sparkline, chunks[1]);
-    } else {
-        let empty = Paragraph::new("No history").block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Memory ")
-                .border_style(Style::default().fg(palette.border)),
-        );
-        frame.render_widget(empty, chunks[1]);
-    }
 }
 
 /// Draw the footer with help hints and last update time
