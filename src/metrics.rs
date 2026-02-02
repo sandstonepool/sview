@@ -361,13 +361,21 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
 
                 // KES (Key Evolving Signature) metrics
                 "cardano_node_metrics_currentKESPeriod_int" => {
-                    metrics.kes_period = Some(value as u64);
+                    if value >= 0.0 && value.is_finite() {
+                        metrics.kes_period = Some(value as u64);
+                    }
                 }
                 "cardano_node_metrics_remainingKESPeriods_int" => {
-                    metrics.kes_remaining = Some(value as u64);
+                    if value >= 0.0 && value.is_finite() {
+                        metrics.kes_remaining = Some(value as u64);
+                    } else if !value.is_finite() {
+                        debug!("Invalid KES remaining value: {}", value);
+                    }
                 }
                 "cardano_node_metrics_operationalCertificateExpiryKESPeriod_int" => {
-                    metrics.kes_periods_per_cert = Some(value as u64);
+                    if value >= 0.0 && value.is_finite() {
+                        metrics.kes_periods_per_cert = Some(value as u64);
+                    }
                 }
 
                 // Forging metrics (block producers)
@@ -394,11 +402,18 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
 
     // Calculate uptime from nodeStartTime if available
     if let Some(start_time) = metrics.node_start_time {
-        let now = std::time::SystemTime::now()
+        let now = match std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        metrics.uptime_seconds = Some((now - start_time) as f64);
+        {
+            Ok(dur) => dur.as_secs(),
+            Err(_) => {
+                debug!("System clock error during uptime calculation, skipping");
+                0  // Skip uptime calculation on clock error
+            }
+        };
+        if now >= start_time {
+            metrics.uptime_seconds = Some((now - start_time) as f64);
+        }
     }
 
     // Log available metrics if in debug mode

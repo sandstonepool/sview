@@ -57,10 +57,15 @@ pub struct MetricSnapshot {
 impl MetricSnapshot {
     /// Create a snapshot from current metrics
     pub fn from_metrics(metrics: &NodeMetrics) -> Self {
-        let timestamp = SystemTime::now()
+        let timestamp = match SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        {
+            Ok(dur) => dur.as_secs(),
+            Err(_) => {
+                warn!("System clock error - using epoch fallback for snapshot");
+                0  // Fallback to epoch (will be skipped in cleanup)
+            }
+        };
 
         Self {
             timestamp,

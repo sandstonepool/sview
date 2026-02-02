@@ -244,7 +244,7 @@ impl AppConfig {
             }]
         } else {
             // Multi-node mode from config file
-            file_config
+            let configured_nodes: Vec<NodeRuntimeConfig> = file_config
                 .nodes
                 .iter()
                 .map(|n| NodeRuntimeConfig {
@@ -257,7 +257,15 @@ impl AppConfig {
                         .clone()
                         .unwrap_or_else(|| file_config.global.network.clone()),
                 })
-                .collect()
+                .collect();
+            
+            if configured_nodes.is_empty() {
+                eprintln!("Error: Configuration has no nodes defined");
+                eprintln!("Please add at least one [[nodes]] section to your config file");
+                std::process::exit(1);
+            }
+            
+            configured_nodes
         };
 
         // Use CLI args for global settings, with file config as fallback
