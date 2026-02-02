@@ -209,12 +209,20 @@ To report missing metrics or get help:
 2. Save output from: `curl http://localhost:12798/metrics`
 3. Include both in your issue report
 
+## Non-Existent Metrics (Removed)
+
+The following metrics are **not exposed** by any real Cardano node and have been removed from sview:
+
+- `cardano_node_metrics_ChainSync_progress` — Non-existent metric
+- `cardano_node_metrics_connectedPeers_int` — Use peer state sums instead
+- `cardano_node_metrics_connectionManager_prunableConns` — Non-existent metric
+
 ## Summary
 
 | Metric | Status | Depends On |
 |--------|--------|-----------|
 | Block Height | ✅ Always | Node running |
-| Peer Count | ✅ Always | Node running |
+| Peer Count | ✅ Always | Calculated from peer states |
 | Memory Used | ✅ Usually | Node version |
 | Uptime | ⚠️ Sometimes | Node config |
 | CPU Time | ⚠️ Sometimes | Node version |
