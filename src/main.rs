@@ -98,9 +98,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     if app.mode == AppMode::Peers {
                         match key.code {
                             KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('p') => {
-                                app.toggle_peers();
+                                app.toggle_peers().await;
                             }
-                            KeyCode::Char('r') => app.refresh_peers(),
+                            KeyCode::Char('r') => app.refresh_peers().await,
                             _ => {}
                         }
                         continue;
@@ -111,7 +111,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         KeyCode::Char('r') => app.fetch_all_metrics().await,
                         KeyCode::Char('?') => app.toggle_help(),
                         KeyCode::Char('t') => app.cycle_theme(),
-                        KeyCode::Char('p') => app.toggle_peers(),
+                        KeyCode::Char('p') => app.toggle_peers().await,
 
                         // Node switching
                         KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {

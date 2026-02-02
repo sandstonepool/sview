@@ -10,8 +10,8 @@ use tracing::debug;
 
 /// Alert severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(dead_code)]
 pub enum AlertSeverity {
+    #[allow(dead_code)]
     Info,
     Warning,
     Critical,
@@ -29,7 +29,7 @@ impl std::fmt::Display for AlertSeverity {
 
 /// A single alert event
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 pub struct Alert {
     pub timestamp: u64,
     pub node_name: String,
@@ -38,7 +38,6 @@ pub struct Alert {
     pub message: String,
 }
 
-#[allow(dead_code)]
 impl Alert {
     /// Format alert for display
     pub fn display(&self) -> String {
@@ -56,7 +55,6 @@ impl Alert {
 }
 
 /// Alert manager for a single node
-#[allow(dead_code)]
 pub struct AlertManager {
     node_name: String,
     log_file: Option<PathBuf>,
@@ -70,7 +68,6 @@ pub struct AlertManager {
     last_height_stall_warning: Option<u64>,
 }
 
-#[allow(dead_code)]
 impl AlertManager {
     /// Create a new alert manager for a node
     pub fn new(node_name: &str) -> Self {
@@ -240,6 +237,7 @@ impl AlertManager {
     }
 
     /// Get all alerts since timestamp
+    #[allow(dead_code)]
     pub fn alerts_since(&self, timestamp: u64) -> Vec<&Alert> {
         self.recent_alerts
             .iter()
@@ -273,7 +271,6 @@ impl AlertManager {
 }
 
 /// Get the alerts log file path for a node
-#[allow(dead_code)]
 fn get_alerts_log_path(node_name: &str) -> Option<PathBuf> {
     dirs::data_dir().map(|p| {
         p.join("sview").join("alerts").join(format!(
@@ -284,7 +281,6 @@ fn get_alerts_log_path(node_name: &str) -> Option<PathBuf> {
 }
 
 /// Convert Unix timestamp to ISO8601 datetime string
-#[allow(dead_code)]
 fn timestamp_to_iso8601(ts: u64) -> String {
     let seconds_in_day = ts % 86400;
     let days_since_epoch = ts / 86400;

@@ -170,7 +170,20 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         .map(|p| p.to_string())
         .unwrap_or_else(|| "—".to_string());
 
-    let header_text = Line::from(vec![
+    // Check for critical alerts
+    let alert_span = if let Some(alert) = node.alert_manager.latest_critical() {
+        vec![
+            Span::raw("  │  "),
+            Span::styled(
+                format!("⚠ {} ", alert.title),
+                Style::default().fg(palette.critical).bold(),
+            ),
+        ]
+    } else {
+        vec![]
+    };
+
+    let mut header_spans = vec![
         Span::styled(
             format!(" {} ", node.config.node_name),
             Style::default().bold().fg(palette.primary),
@@ -195,7 +208,10 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         Span::styled("Tip ", Style::default().fg(palette.text_muted)),
         mem_dot,
         Span::styled("Mem", Style::default().fg(palette.text_muted)),
-    ]);
+    ];
+    header_spans.extend(alert_span);
+
+    let header_text = Line::from(header_spans);
 
     let header = Paragraph::new(header_text).block(
         Block::default()
@@ -854,6 +870,13 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
                 "0".to_string()
             };
 
+            // Get location from cache
+            let location = app
+                .peer_locations
+                .get(&peer.ip)
+                .cloned()
+                .unwrap_or_else(|| "—".to_string());
+
             rows.push(Row::new(vec![
                 Cell::from(Span::styled(peer.direction_str().to_string(), dir_style)),
                 Cell::from(Span::styled(
@@ -864,11 +887,11 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
                     peer.port.to_string(),
                     Style::default().fg(palette.text_muted),
                 )),
-                Cell::from(Span::styled(rtt_str, rtt_style)),
                 Cell::from(Span::styled(
-                    peer.state.clone(),
-                    Style::default().fg(palette.text_muted),
+                    location,
+                    Style::default().fg(palette.tertiary),
                 )),
+                Cell::from(Span::styled(rtt_str, rtt_style)),
                 Cell::from(Span::styled(
                     queue_str,
                     Style::default().fg(palette.text_muted),
@@ -912,11 +935,11 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
             Style::default().fg(palette.primary).bold(),
         )),
         Cell::from(Span::styled(
-            "RTT",
+            "LOCATION",
             Style::default().fg(palette.primary).bold(),
         )),
         Cell::from(Span::styled(
-            "STATE",
+            "RTT",
             Style::default().fg(palette.primary).bold(),
         )),
         Cell::from(Span::styled(
@@ -931,11 +954,11 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
         rows,
         [
             Constraint::Length(4),  // DIR
-            Constraint::Min(20),    // IP
+            Constraint::Min(15),    // IP
             Constraint::Length(6),  // PORT
+            Constraint::Length(16), // LOCATION
             Constraint::Length(10), // RTT
-            Constraint::Length(12), // STATE
-            Constraint::Length(12), // QUEUE
+            Constraint::Length(10), // QUEUE
         ],
     )
     .header(header)

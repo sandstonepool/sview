@@ -3,13 +3,16 @@
 //! This module contains the core application state and logic.
 //! Supports both single-node and multi-node monitoring modes.
 
+use crate::alerts::AlertManager;
 use crate::config::{AppConfig, Config, NodeRole, NodeRuntimeConfig};
+use crate::geoip::GeoIPService;
 use crate::history::MetricsHistory;
 use crate::metrics::{MetricsClient, NodeMetrics};
 use crate::peers::PeerMonitor;
 use crate::sockets::PeerConnection;
 use crate::storage::StorageManager;
 use crate::themes::Theme;
+use std::collections::HashMap;
 use std::time::Instant;
 use tracing::{debug, warn};
 
@@ -59,6 +62,8 @@ pub struct NodeState {
     last_block_time: Option<Instant>,
     /// Discovered peer connections (from socket inspection)
     pub peer_connections: Vec<PeerConnection>,
+    /// Alert manager for critical notifications
+    pub alert_manager: AlertManager,
 }
 
 impl NodeState {
@@ -96,6 +101,9 @@ impl NodeState {
             );
         }
 
+        // Create alert manager before moving config
+        let alert_manager = AlertManager::new(&config.node_name);
+
         Self {
             config,
             role: node_config.role,
@@ -110,12 +118,28 @@ impl NodeState {
             last_block_height: None,
             last_block_time: None,
             peer_connections: Vec::new(),
+            alert_manager,
         }
     }
 
     /// Refresh peer connections via socket inspection
     pub fn refresh_peer_connections(&mut self) {
         self.peer_connections = crate::sockets::discover_peers(self.config.prom_port);
+    }
+
+    /// Run alert checks on current metrics
+    fn check_alerts(&mut self) {
+        self.alert_manager
+            .check_kes_expiry(self.metrics.kes_remaining);
+        self.alert_manager
+            .check_peer_count(self.metrics.peers_connected);
+        self.alert_manager
+            .check_sync_progress(self.metrics.sync_progress);
+        self.alert_manager.check_block_stall(
+            self.metrics.block_height,
+            self.last_block_height,
+            self.tip_age_secs(),
+        );
     }
 
     /// Fetch metrics from this node
@@ -156,6 +180,9 @@ impl NodeState {
                 if let Err(e) = self.storage.save_snapshot(&self.metrics) {
                     debug!("Failed to save metric snapshot: {}", e);
                 }
+
+                // Run alert checks
+                self.check_alerts();
             }
             Err(e) => {
                 self.metrics.connected = false;
@@ -307,6 +334,10 @@ pub struct App {
     pub mode: AppMode,
     /// Current color theme
     pub theme: Theme,
+    /// GeoIP service for peer location lookups
+    geoip_service: GeoIPService,
+    /// Cached peer locations (IP -> "City, CC")
+    pub peer_locations: HashMap<String, String>,
 }
 
 impl App {
@@ -325,6 +356,8 @@ impl App {
             last_refresh: Instant::now(),
             mode: AppMode::Normal,
             theme: Theme::default(),
+            geoip_service: GeoIPService::new(),
+            peer_locations: HashMap::new(),
         }
     }
 
@@ -399,11 +432,12 @@ impl App {
     }
 
     /// Toggle peers view
-    pub fn toggle_peers(&mut self) {
+    pub async fn toggle_peers(&mut self) {
         self.mode = match self.mode {
             AppMode::Normal => {
                 // Refresh peer connections when entering peers view
                 self.nodes[self.selected_node].refresh_peer_connections();
+                self.fetch_peer_locations().await;
                 AppMode::Peers
             }
             AppMode::Peers => AppMode::Normal,
@@ -412,8 +446,22 @@ impl App {
     }
 
     /// Refresh peer connections for current node
-    pub fn refresh_peers(&mut self) {
+    pub async fn refresh_peers(&mut self) {
         self.nodes[self.selected_node].refresh_peer_connections();
+        self.fetch_peer_locations().await;
+    }
+
+    /// Fetch geolocation for current peer IPs
+    async fn fetch_peer_locations(&mut self) {
+        let peers = &self.nodes[self.selected_node].peer_connections;
+        let ips: Vec<String> = peers.iter().map(|p| p.ip.clone()).collect();
+
+        if !ips.is_empty() {
+            let locations = self.geoip_service.lookup_batch(&ips).await;
+            for (ip, loc) in locations {
+                self.peer_locations.insert(ip, loc.short());
+            }
+        }
     }
 
     /// Cycle to the next color theme
