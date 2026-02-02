@@ -352,7 +352,7 @@ impl StorageManager {
     }
 
     /// Load a daily file
-    fn load_daily_file(&self, path: &PathBuf) -> Result<DailySnapshots> {
+    fn load_daily_file(&self, path: &std::path::Path) -> Result<DailySnapshots> {
         let file = File::open(path).with_context(|| format!("Failed to open {:?}", path))?;
         let reader = BufReader::new(file);
         let mut decoder = GzDecoder::new(reader);
@@ -366,7 +366,7 @@ impl StorageManager {
     }
 
     /// Write a daily file
-    fn write_daily_file(&self, path: &PathBuf, daily: &DailySnapshots) -> Result<()> {
+    fn write_daily_file(&self, path: &std::path::Path, daily: &DailySnapshots) -> Result<()> {
         let file = File::create(path).with_context(|| format!("Failed to create {:?}", path))?;
         let writer = BufWriter::new(file);
         let mut encoder = GzEncoder::new(writer, Compression::default());
@@ -380,7 +380,7 @@ impl StorageManager {
     }
 
     /// Export all historical data to CSV
-    pub fn export_to_csv(&self, output_path: &PathBuf) -> Result<usize> {
+    pub fn export_to_csv(&self, output_path: &std::path::Path) -> Result<usize> {
         let snapshots = self.load_history(usize::MAX)?;
 
         let mut writer = BufWriter::new(
@@ -483,6 +483,7 @@ fn timestamp_to_date(ts: u64) -> (u32, u32, u32) {
     (year, month, day)
 }
 
+#[allow(clippy::manual_is_multiple_of)]
 fn is_leap_year(year: u32) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
@@ -501,7 +502,7 @@ fn timestamp_to_iso8601(ts: u64) -> String {
 }
 
 /// Parse date from file path and convert to timestamp
-fn parse_date_from_path(path: &PathBuf) -> Option<u64> {
+fn parse_date_from_path(path: &std::path::Path) -> Option<u64> {
     let file_name = path.file_stem()?.to_str()?;
     let day: u32 = file_name.parse().ok()?;
 
@@ -530,8 +531,8 @@ fn date_to_timestamp(year: u32, month: u32, day: u32) -> u64 {
         [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     };
 
-    for m in 0..(month - 1) as usize {
-        days += days_in_months[m];
+    for &days_in_month in days_in_months.iter().take((month - 1) as usize) {
+        days += days_in_month;
     }
 
     // Add days in current month (day - 1 because day 1 = 0 extra days)
