@@ -66,7 +66,6 @@ impl MetricHistory {
     }
 
     /// Get the trend (difference between current and oldest)
-    #[allow(dead_code)]
     pub fn trend(&self) -> Option<f64> {
         if self.values.len() < 2 {
             return None;

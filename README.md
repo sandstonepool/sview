@@ -32,7 +32,7 @@ experience.
 
 ## Features
 
-- 📊 Real-time node metrics display with sparkline history
+- 📊 Real-time node metrics display with sparkline history and trend indicators (↑↓→)
 - 🔍 Auto-detection of node type (cardano-node, Dingo, Amaru)
 - 🚦 Color-coded health indicators (sync status, peer count, memory)
 - 📅 Epoch progress bar with time remaining countdown
