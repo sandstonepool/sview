@@ -2,19 +2,19 @@
 network = "mainnet"
 refresh_interval_secs = 2
 
-[[node]]
+[[nodes]]
 name = "Relay 1"
 host = "127.0.0.1"
 port = 12798
 role = "relay"
 
-[[node]]
+[[nodes]]
 name = "Relay 2"
 host = "127.0.0.2"
 port = 12798
 role = "relay"
 
-[[node]]
+[[nodes]]
 name = "Block Producer"
 host = "127.0.0.3"
 port = 12798
