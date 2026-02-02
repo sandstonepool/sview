@@ -1,6 +1,6 @@
 # sview TUI Design
 
-**Version:** v0.1.19 (Living Document)  
+**Version:** v0.1.20 (Living Document)  
 **Last Updated:** 2026-02-02  
 **Maintainer:** Claw Daddy  
 
@@ -27,13 +27,17 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 
 ---
 
-## 🎨 Current Layout (v0.1.19+)
+## 🎨 Current Layout (v0.1.20+)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [●] Cardano Node [BP] Connected │ Network: mainnet │ Node: cardano  │
 │                                 │ Theme: Dark Default              │
 ├─────────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────── EPOCH PROGRESS ──────────┐ │
+│ │ ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ │
+│ │ 78.2% — 2d 4h 23m remaining                                      │ │
+│ └────────────────────────────────────────────────────────────────┘ │
 │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
 │  │  CHAIN METRICS   │  │ NETWORK & PEERS  │  │   RESOURCES      │
@@ -49,10 +53,10 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 │  │ Peers:       59  │  │  P2P BREAKDOWN   │  │ Blocks Adopted:  │
 │  │ KES Rem:  324    │  │  ├─ Cold:   120  │  │ Adopted:    2841 │
 │  │                  │  │  ├─ Warm:    22  │  │ Failed:        0 │
-│  │ ┌─ EPOCH ────┐   │  │  ├─ Hot:     20  │  │                  │
-│  │ │███████░░░░░│   │  │  ├─ Duplex:   6  │  │                  │
-│  │ │ 78% (2d 4h)│   │  │  ├─ Bidirect: 12 │  │                  │
-│  │ └─────────────┘   │  │  └─ Unidirect:42 │  │                  │
+│  │                  │  │  ├─ Hot:     20  │  │                  │
+│  │                  │  │  ├─ Duplex:   6  │  │                  │
+│  │                  │  │  ├─ Bidirect: 12 │  │                  │
+│  │                  │  │  └─ Unidirect:42 │  │                  │
 │  │                  │  │                  │  │                  │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘
 │
@@ -86,7 +90,22 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 
 ---
 
-### Metrics Section (Top, ~14 lines)
+### Epoch Progress (3 lines, full width)
+**Content:** Epoch progress gauge with countdown  
+- Full-width progress bar
+- Percentage completed
+- Time remaining in epoch
+- Color changes with progress (green → yellow → orange as epoch end approaches)
+
+**Significance:**
+- Critical for operators managing validator schedule
+- Shows when new epoch starts (trigger for KES key rotations)
+- Helps plan maintenance windows
+- Always at-a-glance visible
+
+---
+
+### Metrics Section (~11-14 lines)
 **Three equal columns (33% / 33% / 34%)**
 
 #### Left Column: Chain Metrics
@@ -105,8 +124,7 @@ Focus on blockchain state and consensus.
 | Connected Peers | `59` | ✅ | Warn <2 |
 | KES Remaining | `324` | ✅ | Crit <5 |
 
-**Sub-visualizations:**
-- Epoch Progress Gauge: `████████░░░░░░░░ 78% (2d 4h remaining)`
+**Note:** Epoch progress visualization moved to full-width section at top (see Epoch Progress section)
 
 ---
 
@@ -490,6 +508,7 @@ When making TUI changes:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.20 | 2026-02-02 | Epoch progress moved to full-width section below header |
 | v0.1.19 | 2026-02-02 | Side-by-side sparklines, optimized height, cleaner layout |
 | v0.1.18 | 2026-02-02 | Code review fixes, no TUI changes |
 | v0.1.17 | 2026-02-02 | Version bump, no TUI changes |

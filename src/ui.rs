@@ -152,17 +152,24 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the main content area with metrics
 fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Split into top metrics area and bottom sparklines area
+    // Split into: epoch gauge, metrics, and sparklines
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(18), Constraint::Length(5)])
+        .constraints([
+            Constraint::Length(3),  // Epoch progress gauge (full width)
+            Constraint::Min(15),    // Metrics section (3 columns)
+            Constraint::Length(5),  // Sparklines section (side-by-side)
+        ])
         .split(area);
 
-    // Top section: 3-column metrics layout
-    draw_metrics_section(frame, chunks[0], app, palette);
+    // Epoch progress gauge (full width)
+    draw_epoch_progress(frame, chunks[0], app, palette);
 
-    // Bottom section: Side-by-side sparklines
-    draw_sparklines_section(frame, chunks[1], app, palette);
+    // Metrics section: 3-column layout
+    draw_metrics_section(frame, chunks[1], app, palette);
+
+    // Sparklines section: Side-by-side
+    draw_sparklines_section(frame, chunks[2], app, palette);
 }
 
 /// Draw the metrics section (chain, network, resources in 3 columns)
@@ -193,18 +200,9 @@ fn draw_sparklines_section(frame: &mut Frame, area: Rect, app: &App, palette: &P
     draw_memory_sparkline(frame, chunks[1], app, palette);
 }
 
-/// Draw compact chain metrics (without sparkline)
+/// Draw compact chain metrics (epoch gauge moved to full-width section)
 fn draw_chain_metrics_compact(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(11), // Chain metrics table
-            Constraint::Length(3),  // Epoch progress gauge
-        ])
-        .split(area);
-
-    draw_chain_metrics(frame, chunks[0], app, palette);
-    draw_epoch_progress(frame, chunks[1], app, palette);
+    draw_chain_metrics(frame, area, app, palette);
 }
 
 /// Draw chain metrics table
