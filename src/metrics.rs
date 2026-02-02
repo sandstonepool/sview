@@ -69,10 +69,9 @@ pub struct NodeMetrics {
     pub peers_connected: Option<u64>,
     /// Memory usage in bytes
     pub memory_used: Option<u64>,
-    /// CPU usage percentage (if available)
-    pub cpu_seconds: Option<f64>,
-    /// Node uptime in seconds
-    #[allow(dead_code)]
+    /// CPU usage in milliseconds
+    pub cpu_ms: Option<u64>,
+    /// Node uptime in seconds (calculated from nodeStartTime)
     pub uptime_seconds: Option<f64>,
     /// Transactions in mempool
     pub mempool_txs: Option<u64>,
@@ -96,6 +95,16 @@ pub struct NodeMetrics {
     pub kes_periods_per_cert: Option<u64>,
     /// P2P (peer-to-peer) network statistics
     pub p2p: P2PStats,
+    /// Node start time (unix timestamp)
+    pub node_start_time: Option<u64>,
+    /// Incoming connections
+    pub incoming_connections: Option<u64>,
+    /// Outgoing connections
+    pub outgoing_connections: Option<u64>,
+    /// Full duplex connections
+    pub full_duplex_connections: Option<u64>,
+    /// Unidirectional connections
+    pub unidirectional_connections: Option<u64>,
 }
 
 /// Metrics client for fetching Prometheus data
@@ -174,11 +183,21 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 | "cardano_node_metrics_RTS_GCLiveBytes_int" => {
                     metrics.memory_used = Some(value as u64);
                 }
+                "cardano_node_metrics_Mem_resident_int" => {
+                    // Resident memory (alternative metric)
+                    if metrics.memory_used.is_none() {
+                        metrics.memory_used = Some(value as u64);
+                    }
+                }
+                // CPU metrics from GC
+                "rts_gc_cpu_ms" => {
+                    metrics.cpu_ms = Some(value as u64);
+                }
                 "cardano_node_metrics_RTS_cpuNs_int" 
                 | "cardano_node_metrics_RTS_cpu_ns"
                 | "cardano_node_metrics_RTS_cpuNs" => {
-                    // Convert nanoseconds to seconds
-                    metrics.cpu_seconds = Some(value / 1_000_000_000.0);
+                    // Convert nanoseconds to milliseconds
+                    metrics.cpu_ms = Some((value / 1_000_000.0) as u64);
                 }
 
                 // Mempool metrics (multiple possible names for compatibility)
@@ -196,14 +215,34 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.sync_progress = Some(value * 100.0);
                 }
 
-                // Uptime metrics (multiple possible names)
+                // Uptime metrics
+                "cardano_node_metrics_nodeStartTime_int" => {
+                    metrics.node_start_time = Some(value as u64);
+                }
                 "cardano_node_metrics_upTime_ns" 
                 | "cardano_node_metrics_Stat_startTime" => {
                     // Convert nanoseconds to seconds
                     metrics.uptime_seconds = Some(value / 1_000_000_000.0);
                 }
 
-                // P2P (peer-to-peer) network metrics
+                // Connection manager metrics (new naming from actual nodes)
+                "cardano_node_metrics_connectionManager_incomingConns" => {
+                    metrics.incoming_connections = Some(value as u64);
+                }
+                "cardano_node_metrics_connectionManager_outgoingConns" => {
+                    metrics.outgoing_connections = Some(value as u64);
+                }
+                "cardano_node_metrics_connectionManager_fullDuplexConns" => {
+                    metrics.full_duplex_connections = Some(value as u64);
+                }
+                "cardano_node_metrics_connectionManager_unidirectionalConns" => {
+                    metrics.unidirectional_connections = Some(value as u64);
+                }
+                "cardano_node_metrics_connectionManager_duplexConns" => {
+                    metrics.full_duplex_connections = Some(value as u64);
+                }
+
+                // P2P (peer-to-peer) network metrics (legacy naming)
                 "cardano_node_metrics_p2p_enabled_int" => {
                     metrics.p2p.enabled = Some(value > 0.0);
                 }
@@ -232,6 +271,17 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.p2p.duplex_peers = Some(value as u64);
                 }
 
+                // Peer selection metrics
+                "cardano_node_metrics_peerSelection_cold" => {
+                    metrics.p2p.cold_peers = Some(value as u64);
+                }
+                "cardano_node_metrics_peerSelection_warm" => {
+                    metrics.p2p.warm_peers = Some(value as u64);
+                }
+                "cardano_node_metrics_peerSelection_hot" => {
+                    metrics.p2p.hot_peers = Some(value as u64);
+                }
+
                 // KES (Key Evolving Signature) metrics
                 "cardano_node_metrics_currentKESPeriod_int" => {
                     metrics.kes_period = Some(value as u64);
@@ -251,13 +301,23 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
     // Detect node type based on available metrics
     metrics.node_type = detect_node_type(&metrics.raw);
 
+    // Calculate uptime from nodeStartTime if available
+    if let Some(start_time) = metrics.node_start_time {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        metrics.uptime_seconds = Some((now - start_time) as f64);
+    }
+
     // Log available metrics if in debug mode
     let available_metrics: Vec<&str> = metrics
         .raw
         .keys()
         .filter(|k| {
             k.contains("Uptime") || k.contains("upTime") || k.contains("cpu") || 
-            k.contains("Mempool") || k.contains("memory") || k.contains("Memory")
+            k.contains("Mempool") || k.contains("memory") || k.contains("Memory") ||
+            k.contains("connection") || k.contains("Connection")
         })
         .map(|s| s.as_str())
         .collect();

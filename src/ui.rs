@@ -358,7 +358,7 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
         ]),
         Row::new(vec![
             Cell::from("CPU Time"),
-            Cell::from(format_duration_secs(metrics.cpu_seconds)),
+            Cell::from(format_cpu_ms(metrics.cpu_ms)),
         ]),
         Row::new(vec![
             Cell::from("Mempool TXs"),
@@ -594,6 +594,7 @@ fn format_bytes(bytes: Option<u64>) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn format_duration_secs(seconds: Option<f64>) -> String {
     match seconds {
         Some(s) if s >= 86400.0 => {
@@ -617,6 +618,26 @@ fn format_sync_progress(progress: Option<f64>) -> String {
     match progress {
         Some(p) if p >= 99.9 => "100% ✓".to_string(),
         Some(p) => format!("{:.2}%", p),
+        None => "—".to_string(),
+    }
+}
+
+fn format_cpu_ms(ms: Option<u64>) -> String {
+    match ms {
+        Some(total_ms) => {
+            let secs = total_ms / 1000;
+            let hours = secs / 3600;
+            let mins = (secs % 3600) / 60;
+            let sec = secs % 60;
+
+            if hours > 0 {
+                format!("{}h {}m {}s", hours, mins, sec)
+            } else if mins > 0 {
+                format!("{}m {}s", mins, sec)
+            } else {
+                format!("{}s", sec)
+            }
+        }
         None => "—".to_string(),
     }
 }
