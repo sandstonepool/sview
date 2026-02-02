@@ -91,7 +91,7 @@ fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7), // Chain metrics table
+            Constraint::Length(8), // Chain metrics table (extra row for KES on block producers)
             Constraint::Min(4),    // Block height sparkline
         ])
         .split(area);
@@ -105,8 +105,9 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
     let metrics = &app.metrics;
     let sync_health = app.sync_health();
     let peer_health = app.peer_health();
+    let kes_health = app.kes_health();
 
-    let rows = vec![
+    let mut rows = vec![
         Row::new(vec![
             Cell::from("Block Height"),
             Cell::from(format_metric_u64(metrics.block_height)),
@@ -140,6 +141,20 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
             )),
         ]),
     ];
+
+    // Add KES row only if KES metrics are available (block producer)
+    if metrics.kes_remaining.is_some() {
+        rows.push(Row::new(vec![
+            Cell::from(Span::styled(
+                "KES Remaining",
+                Style::default().fg(health_to_color(kes_health)),
+            )),
+            Cell::from(Span::styled(
+                format_kes_remaining(metrics.kes_remaining),
+                Style::default().fg(health_to_color(kes_health)),
+            )),
+        ]));
+    }
 
     let table = Table::new(
         rows,
@@ -457,6 +472,17 @@ fn format_uptime(seconds: Option<f64>) -> String {
             } else {
                 format!("{}m", mins)
             }
+        }
+        None => "—".to_string(),
+    }
+}
+
+fn format_kes_remaining(periods: Option<u64>) -> String {
+    match periods {
+        Some(p) => {
+            // Each KES period is ~1.5 days on mainnet (129600 slots at 1 slot/sec)
+            let days_approx = (p as f64 * 1.5) as u64;
+            format!("{} (~{}d)", p, days_approx)
         }
         None => "—".to_string(),
     }

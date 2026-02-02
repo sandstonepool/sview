@@ -139,13 +139,30 @@ impl App {
         }
     }
 
+    /// Get the health status for KES key expiry
+    pub fn kes_health(&self) -> HealthStatus {
+        match self.metrics.kes_remaining {
+            // Each KES period is ~1.5 days on mainnet (129600 slots / 86400 slots per day)
+            // Warn at <20 periods (~30 days), critical at <5 periods (~7 days)
+            Some(remaining) if remaining >= 20 => HealthStatus::Good,
+            Some(remaining) if remaining >= 5 => HealthStatus::Warning,
+            Some(_) => HealthStatus::Critical,
+            None => HealthStatus::Good, // Not a block producer or unavailable
+        }
+    }
+
     /// Get the overall node health
     pub fn overall_health(&self) -> HealthStatus {
         if !self.metrics.connected {
             return HealthStatus::Critical;
         }
 
-        let statuses = [self.peer_health(), self.sync_health(), self.memory_health()];
+        let statuses = [
+            self.peer_health(),
+            self.sync_health(),
+            self.memory_health(),
+            self.kes_health(),
+        ];
 
         if statuses.contains(&HealthStatus::Critical) {
             HealthStatus::Critical

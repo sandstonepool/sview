@@ -63,6 +63,13 @@ pub struct NodeMetrics {
     pub connected: bool,
     /// Raw metrics for debugging/advanced display
     pub raw: HashMap<String, f64>,
+    // KES (Key Evolving Signature) metrics - critical for block producers
+    /// Current KES period
+    pub kes_period: Option<u64>,
+    /// Remaining KES periods until expiry
+    pub kes_remaining: Option<u64>,
+    /// KES periods per operational certificate
+    pub kes_periods_per_cert: Option<u64>,
 }
 
 /// Metrics client for fetching Prometheus data
@@ -154,6 +161,17 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "cardano_node_metrics_upTime_ns" => {
                     // Convert nanoseconds to seconds
                     metrics.uptime_seconds = Some(value / 1_000_000_000.0);
+                }
+
+                // KES (Key Evolving Signature) metrics
+                "cardano_node_metrics_currentKESPeriod_int" => {
+                    metrics.kes_period = Some(value as u64);
+                }
+                "cardano_node_metrics_remainingKESPeriods_int" => {
+                    metrics.kes_remaining = Some(value as u64);
+                }
+                "cardano_node_metrics_operationalCertificateExpiryKESPeriod_int" => {
+                    metrics.kes_periods_per_cert = Some(value as u64);
                 }
 
                 _ => {}
@@ -249,5 +267,18 @@ cardano_node_metrics_upTime_ns 86400000000000
         let metrics = parse_prometheus_metrics(text);
         // 86400 seconds = 1 day
         assert_eq!(metrics.uptime_seconds, Some(86400.0));
+    }
+
+    #[test]
+    fn test_parse_kes_metrics() {
+        let text = r#"
+cardano_node_metrics_currentKESPeriod_int 350
+cardano_node_metrics_remainingKESPeriods_int 42
+cardano_node_metrics_operationalCertificateExpiryKESPeriod_int 62
+"#;
+        let metrics = parse_prometheus_metrics(text);
+        assert_eq!(metrics.kes_period, Some(350));
+        assert_eq!(metrics.kes_remaining, Some(42));
+        assert_eq!(metrics.kes_periods_per_cert, Some(62));
     }
 }
