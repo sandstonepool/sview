@@ -5,7 +5,7 @@
 use crate::app::{App, AppMode, HealthStatus};
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Sparkline, Table, Wrap},
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Wrap},
 };
 
 /// Main draw function - renders the entire UI
@@ -92,12 +92,14 @@ fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(9), // Chain metrics table (extra rows for tip age + KES)
+            Constraint::Length(3), // Epoch progress gauge
             Constraint::Min(4),    // Block height sparkline
         ])
         .split(area);
 
     draw_chain_metrics(frame, chunks[0], app);
-    draw_block_sparkline(frame, chunks[1], app);
+    draw_epoch_progress(frame, chunks[1], app);
+    draw_block_sparkline(frame, chunks[2], app);
 }
 
 /// Draw chain metrics table
@@ -178,6 +180,43 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
     );
 
     frame.render_widget(table, area);
+}
+
+/// Draw epoch progress gauge
+fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
+    let progress = app.epoch_progress().unwrap_or(0.0);
+    let time_remaining = app.epoch_time_remaining();
+
+    let label = match time_remaining {
+        Some(secs) => format!(
+            "{:.1}% — {} remaining",
+            progress,
+            format_time_remaining(secs)
+        ),
+        None => format!("{:.1}%", progress),
+    };
+
+    // Color based on how close to epoch end
+    let gauge_color = match progress {
+        p if p >= 95.0 => Color::Yellow, // Near epoch boundary
+        p if p >= 80.0 => Color::Cyan,
+        _ => Color::Green,
+    };
+
+    let gauge = Gauge::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Epoch Progress "),
+        )
+        .gauge_style(Style::default().fg(gauge_color).bg(Color::DarkGray))
+        .ratio(progress / 100.0)
+        .label(Span::styled(
+            label,
+            Style::default().fg(Color::White).bold(),
+        ));
+
+    frame.render_widget(gauge, area);
 }
 
 /// Draw block height sparkline
@@ -521,5 +560,19 @@ fn truncate_string(s: &str, max_len: usize) -> String {
         s.to_string()
     } else {
         format!("{}...", &s[..max_len - 3])
+    }
+}
+
+fn format_time_remaining(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let mins = (seconds % 3600) / 60;
+
+    if days > 0 {
+        format!("{}d {}h", days, hours)
+    } else if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else {
+        format!("{}m", mins)
     }
 }

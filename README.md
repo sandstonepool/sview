@@ -20,6 +20,7 @@ experience.
 - 📊 Real-time node metrics display with sparkline history
 - 🔍 Auto-detection of node type (cardano-node, Dingo, Amaru)
 - 🚦 Color-coded health indicators (sync status, peer count, memory)
+- 📅 Epoch progress bar with time remaining countdown
 - ⚡ Lightweight and fast — single binary, no runtime dependencies
 - 🎨 Clean, intuitive terminal interface
 - 🔧 Flexible configuration via CLI arguments or environment variables
@@ -81,6 +82,7 @@ Configuration can be done via CLI arguments or environment variables. CLI argume
 | `--prom-timeout` | `PROM_TIMEOUT` | Request timeout in seconds | `3` |
 | `-r, --refresh-interval` | `REFRESH_INTERVAL` | Refresh interval in seconds | `2` |
 | `--history-length` | `HISTORY_LENGTH` | Data points to keep for sparklines | `60` |
+| `--epoch-length` | `EPOCH_LENGTH` | Epoch length in slots | `432000` |
 
 ### Examples
 
@@ -90,6 +92,9 @@ sview --prom-host 10.0.0.5 -n "Relay 1"
 
 # Slower refresh for low-bandwidth connections
 sview --refresh-interval 5 --prom-timeout 10
+
+# Monitor a testnet node (shorter epochs)
+sview --network preprod --epoch-length 86400
 
 # Full example with all options
 sview \

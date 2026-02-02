@@ -172,8 +172,7 @@ impl App {
 
     /// Get seconds since last block was received
     pub fn tip_age_secs(&self) -> Option<u64> {
-        self.last_block_time
-            .map(|t| t.elapsed().as_secs())
+        self.last_block_time.map(|t| t.elapsed().as_secs())
     }
 
     /// Get the health status for tip age
@@ -221,5 +220,20 @@ impl App {
         // Calculate based on refresh interval and number of samples
         let seconds = samples as f64 * self.config.refresh_interval_secs as f64;
         Some(trend / seconds * 60.0)
+    }
+
+    /// Get epoch progress as a percentage (0.0 to 100.0)
+    pub fn epoch_progress(&self) -> Option<f64> {
+        let slot_in_epoch = self.metrics.slot_in_epoch? as f64;
+        let epoch_length = self.config.epoch_length as f64;
+        Some((slot_in_epoch / epoch_length) * 100.0)
+    }
+
+    /// Get estimated time remaining in the current epoch in seconds
+    pub fn epoch_time_remaining(&self) -> Option<u64> {
+        let slot_in_epoch = self.metrics.slot_in_epoch?;
+        let remaining_slots = self.config.epoch_length.saturating_sub(slot_in_epoch);
+        // 1 slot = 1 second on Cardano
+        Some(remaining_slots)
     }
 }

@@ -38,6 +38,10 @@ pub struct Config {
     /// History length for sparklines (number of data points to keep)
     #[arg(long, env = "HISTORY_LENGTH", default_value_t = 60)]
     pub history_length: usize,
+
+    /// Epoch length in slots (432000 for mainnet, 86400 for testnets)
+    #[arg(long, env = "EPOCH_LENGTH", default_value_t = 432000)]
+    pub epoch_length: u64,
 }
 
 impl Config {
@@ -72,6 +76,7 @@ impl Default for Config {
             prom_timeout_secs: 3,
             refresh_interval_secs: 2,
             history_length: 60,
+            epoch_length: 432000,
         }
     }
 }
