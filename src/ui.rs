@@ -636,6 +636,8 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         Span::raw(" quit "),
         Span::styled("r", Style::default().fg(palette.tertiary)),
         Span::raw(" refresh "),
+        Span::styled("p", Style::default().fg(palette.tertiary)),
+        Span::raw(" peers "),
         Span::styled("t", Style::default().fg(palette.tertiary)),
         Span::raw(" theme "),
         Span::styled("?", Style::default().fg(palette.tertiary)),

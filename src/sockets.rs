@@ -40,8 +40,9 @@ impl PeerConnection {
 
 /// Discover peer connections for a Cardano node
 ///
-/// Uses `ss` command to inspect TCP connections on the node's port.
-pub fn discover_peers(node_port: u16) -> Vec<PeerConnection> {
+/// Uses `ss` command to inspect TCP connections. Filters to likely Cardano
+/// P2P connections by excluding localhost, well-known ports, and metrics port.
+pub fn discover_peers(prom_port: u16) -> Vec<PeerConnection> {
     let mut peers = Vec::new();
 
     // Use ss to get TCP connections with extended info
@@ -97,7 +98,7 @@ pub fn discover_peers(node_port: u16) -> Vec<PeerConnection> {
                     prev_recv_q,
                     prev_send_q,
                     None,
-                    node_port,
+                    prom_port,
                 ) {
                     peers.push(conn);
                 }
@@ -109,7 +110,7 @@ pub fn discover_peers(node_port: u16) -> Vec<PeerConnection> {
             let rtt = parse_rtt(line);
 
             if let Some((local, peer, recv_q, send_q)) = current_line.take() {
-                if let Some(conn) = parse_connection(&local, &peer, recv_q, send_q, rtt, node_port)
+                if let Some(conn) = parse_connection(&local, &peer, recv_q, send_q, rtt, prom_port)
                 {
                     peers.push(conn);
                 }
@@ -119,7 +120,7 @@ pub fn discover_peers(node_port: u16) -> Vec<PeerConnection> {
 
     // Process last connection
     if let Some((local, peer, recv_q, send_q)) = current_line {
-        if let Some(conn) = parse_connection(&local, &peer, recv_q, send_q, None, node_port) {
+        if let Some(conn) = parse_connection(&local, &peer, recv_q, send_q, None, prom_port) {
             peers.push(conn);
         }
     }
@@ -144,6 +145,18 @@ fn parse_rtt(line: &str) -> Option<f64> {
     None
 }
 
+/// Well-known ports to exclude from peer discovery
+const EXCLUDED_PORTS: &[u16] = &[
+    22,    // SSH
+    80,    // HTTP
+    443,   // HTTPS
+    8080,  // HTTP alt
+    8443,  // HTTPS alt
+    9090,  // Prometheus server
+    9100,  // Node exporter
+    12798, // Cardano default prom port
+];
+
 /// Parse a connection from local/peer address strings
 fn parse_connection(
     local: &str,
@@ -151,29 +164,37 @@ fn parse_connection(
     recv_q: u64,
     send_q: u64,
     rtt: Option<f64>,
-    node_port: u16,
+    prom_port: u16,
 ) -> Option<PeerConnection> {
     // Parse addresses - format is either IP:port or [IPv6]:port
     let (local_ip, local_port) = parse_address(local)?;
     let (peer_ip, peer_port) = parse_address(peer)?;
 
-    // Determine if this is related to our node port
-    let is_node_local = local_port == node_port;
-    let is_node_peer = peer_port == node_port;
-
-    // Skip if neither side is our node port
-    if !is_node_local && !is_node_peer {
-        return None;
-    }
-
     // Skip localhost connections
-    if peer_ip == "127.0.0.1" || peer_ip == "::1" || local_ip == "127.0.0.1" || local_ip == "::1" {
+    if peer_ip == "127.0.0.1"
+        || peer_ip == "::1"
+        || local_ip == "127.0.0.1"
+        || local_ip == "::1"
+        || peer_ip.starts_with("127.")
+    {
         return None;
     }
 
-    // Incoming = peer connected to our node port
-    // Outgoing = we connected from our node to peer
-    let incoming = is_node_local;
+    // Skip connections on excluded well-known ports
+    if EXCLUDED_PORTS.contains(&local_port) || EXCLUDED_PORTS.contains(&peer_port) {
+        return None;
+    }
+
+    // Skip connections on the prom port (metrics, not P2P)
+    if local_port == prom_port || peer_port == prom_port {
+        return None;
+    }
+
+    // Cardano P2P typically uses ports in range 3000-3999 or higher custom ports
+    // Incoming = peer connected to a high local port (we're listening)
+    // Outgoing = we connected to peer's listening port
+    // Heuristic: if local port > peer port, likely incoming; otherwise outgoing
+    let incoming = local_port > 10000 || (3000..4000).contains(&local_port);
 
     Some(PeerConnection {
         ip: peer_ip,
