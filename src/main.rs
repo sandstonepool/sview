@@ -12,6 +12,7 @@ mod history;
 mod metrics;
 mod peers;
 mod storage;
+mod themes;
 mod ui;
 
 use anyhow::Result;
@@ -93,6 +94,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                         KeyCode::Char('r') => app.fetch_all_metrics().await,
                         KeyCode::Char('?') => app.toggle_help(),
+                        KeyCode::Char('t') => app.cycle_theme(),
                         
                         // Node switching
                         KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {

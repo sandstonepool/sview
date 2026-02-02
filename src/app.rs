@@ -8,6 +8,7 @@ use crate::history::MetricsHistory;
 use crate::metrics::{MetricsClient, NodeMetrics};
 use crate::peers::PeerMonitor;
 use crate::storage::StorageManager;
+use crate::themes::Theme;
 use std::time::Instant;
 use tracing::{debug, warn};
 
@@ -285,6 +286,8 @@ pub struct App {
     last_refresh: Instant,
     /// Current UI mode
     pub mode: AppMode,
+    /// Current color theme
+    pub theme: Theme,
 }
 
 impl App {
@@ -302,6 +305,7 @@ impl App {
             selected_node: 0,
             last_refresh: Instant::now(),
             mode: AppMode::Normal,
+            theme: Theme::default(),
         }
     }
 
@@ -373,6 +377,11 @@ impl App {
             AppMode::Normal => AppMode::Help,
             AppMode::Help => AppMode::Normal,
         };
+    }
+
+    /// Cycle to the next color theme
+    pub fn cycle_theme(&mut self) {
+        self.theme = self.theme.next();
     }
 
 }

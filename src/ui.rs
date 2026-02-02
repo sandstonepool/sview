@@ -3,6 +3,7 @@
 //! This module handles all TUI rendering using ratatui.
 
 use crate::app::{App, AppMode, HealthStatus};
+use crate::themes::Palette;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
@@ -11,6 +12,7 @@ use ratatui::{
 /// Main draw function - renders the entire UI
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
+    let palette = app.theme.palette();
 
     // Create main layout - add node tabs if multi-node mode
     let chunks = if app.is_multi_node() {
@@ -19,7 +21,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
             .constraints([
                 Constraint::Length(3), // Node tabs
                 Constraint::Length(3), // Header
-                Constraint::Min(10),   // Main content
+                Constraint::Min(15),   // Main content (increased for more metrics)
                 Constraint::Length(3), // Footer/status
             ])
             .split(area)
@@ -28,7 +30,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3), // Header
-                Constraint::Min(10),   // Main content
+                Constraint::Min(15),   // Main content (increased for more metrics)
                 Constraint::Length(3), // Footer/status
             ])
             .split(area)
@@ -36,35 +38,35 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
     // Draw node tabs if multi-node mode
     let (header_area, main_area, footer_area) = if app.is_multi_node() {
-        draw_node_tabs(frame, chunks[0], app);
+        draw_node_tabs(frame, chunks[0], app, &palette);
         (chunks[1], chunks[2], chunks[3])
     } else {
         (chunks[0], chunks[1], chunks[2])
     };
 
     // Draw header
-    draw_header(frame, header_area, app);
+    draw_header(frame, header_area, app, &palette);
 
-    // Draw main content
-    draw_main(frame, main_area, app);
+    // Draw main content - with improved 3-column layout
+    draw_main(frame, main_area, app, &palette);
 
     // Draw footer
-    draw_footer(frame, footer_area, app);
+    draw_footer(frame, footer_area, app, &palette);
 
     // Draw help overlay if in help mode
     if app.mode == AppMode::Help {
-        draw_help_popup(frame, area, app.is_multi_node());
+        draw_help_popup(frame, area, app.is_multi_node(), &palette);
     }
 }
 
 /// Draw the node selection tabs
-fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let titles: Vec<Line> = app
         .nodes
         .iter()
         .enumerate()
         .map(|(i, node)| {
-            let health_color = health_to_color(node.overall_health());
+            let health_color = health_to_color(node.overall_health(), palette);
             let indicator = if node.metrics.connected { "●" } else { "○" };
             let role_suffix = match node.role {
                 crate::config::NodeRole::Bp => " [BP]",
@@ -76,19 +78,19 @@ fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App) {
                 Span::raw(format!("{}{}", node.config.node_name, role_suffix)),
                 Span::styled(
                     format!(" [{}]", i + 1),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(palette.text_muted),
                 ),
             ])
         })
         .collect();
 
     let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title(" Nodes "))
+        .block(Block::default().borders(Borders::ALL).title(" Nodes ").border_style(Style::default().fg(palette.border)))
         .select(app.selected_node)
-        .style(Style::default().fg(Color::White))
+        .style(Style::default().fg(palette.text))
         .highlight_style(
             Style::default()
-                .fg(Color::Cyan)
+                .fg(palette.primary)
                 .add_modifier(Modifier::BOLD),
         )
         .divider(" │ ");
@@ -97,14 +99,14 @@ fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw the header section with node name and status
-fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
-    let health_color = health_to_color(node.overall_health());
+    let health_color = health_to_color(node.overall_health(), palette);
     let status_indicator = if node.metrics.connected { "●" } else { "○" };
 
     let role_badge = match node.role {
         crate::config::NodeRole::Bp => {
-            Span::styled(" [BP] ", Style::default().fg(Color::Magenta).bold())
+            Span::styled(" [BP] ", Style::default().fg(palette.secondary).bold())
         }
         crate::config::NodeRole::Relay => Span::raw(""),
     };
@@ -112,7 +114,7 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
     let header_text = Line::from(vec![
         Span::styled(
             format!(" {} ", node.config.node_name),
-            Style::default().bold(),
+            Style::default().bold().fg(palette.text),
         ),
         role_badge,
         Span::styled(status_indicator, Style::default().fg(health_color)),
@@ -124,54 +126,66 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         Span::raw(" │ "),
         Span::styled(
             format!("Network: {}", node.config.network),
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(palette.primary),
         ),
         Span::raw(" │ "),
         Span::styled(
             format!("Node: {}", node.metrics.node_type),
-            Style::default().fg(Color::Yellow),
+            Style::default().fg(palette.tertiary),
+        ),
+        Span::raw(" │ "),
+        Span::styled(
+            format!(" [{}] ", app.theme.display_name()),
+            Style::default().fg(palette.text_muted),
         ),
     ]);
 
-    let header =
-        Paragraph::new(header_text).block(Block::default().borders(Borders::ALL).title(" sview "));
+    let header = Paragraph::new(header_text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" sview ")
+            .border_style(Style::default().fg(palette.border)),
+    );
 
     frame.render_widget(header, area);
 }
 
 /// Draw the main content area with metrics
-fn draw_main(frame: &mut Frame, area: Rect, app: &App) {
-    // Split into left and right panels
+fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // Split into three columns: Chain (33%), Network (33%), Resources (34%)
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(34)])
         .split(area);
 
-    // Left panel: Chain metrics with sparklines
-    draw_chain_panel(frame, chunks[0], app);
+    // Left column: Chain & Block Metrics
+    draw_chain_panel(frame, chunks[0], app, palette);
 
-    // Right panel: Resource metrics
-    draw_resource_panel(frame, chunks[1], app);
+    // Middle column: Network & Peer Metrics
+    draw_network_panel(frame, chunks[1], app, palette);
+
+    // Right column: Resource & System Metrics
+    draw_resource_panel(frame, chunks[2], app, palette);
 }
 
 /// Draw chain/block metrics panel
-fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(9), // Chain metrics table
-            Constraint::Length(3), // Epoch progress gauge
-            Constraint::Min(4),    // Block height sparkline
+            Constraint::Length(11), // Chain metrics table (expanded)
+            Constraint::Length(3),  // Epoch progress gauge
+            Constraint::Min(4),     // Block height sparkline
         ])
         .split(area);
 
-    draw_chain_metrics(frame, chunks[0], app);
-    draw_epoch_progress(frame, chunks[1], app);
-    draw_block_sparkline(frame, chunks[2], app);
+    draw_chain_metrics(frame, chunks[0], app, palette);
+    draw_epoch_progress(frame, chunks[1], app, palette);
+    draw_block_sparkline(frame, chunks[2], app, palette);
 }
 
 /// Draw chain metrics table
-fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let metrics = &node.metrics;
     let sync_health = node.sync_health();
@@ -187,11 +201,11 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
         Row::new(vec![
             Cell::from(Span::styled(
                 "Tip Age",
-                Style::default().fg(health_to_color(tip_health)),
+                Style::default().fg(health_to_color(tip_health, palette)),
             )),
             Cell::from(Span::styled(
                 format_tip_age(node.tip_age_secs()),
-                Style::default().fg(health_to_color(tip_health)),
+                Style::default().fg(health_to_color(tip_health, palette)),
             )),
         ]),
         Row::new(vec![
@@ -205,21 +219,33 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
         Row::new(vec![
             Cell::from(Span::styled(
                 "Sync Progress",
-                Style::default().fg(health_to_color(sync_health)),
+                Style::default().fg(health_to_color(sync_health, palette)),
             )),
             Cell::from(Span::styled(
                 format_sync_progress(metrics.sync_progress),
-                Style::default().fg(health_to_color(sync_health)),
+                Style::default().fg(health_to_color(sync_health, palette)),
             )),
+        ]),
+        Row::new(vec![
+            Cell::from("Chain Density"),
+            Cell::from(format_density(metrics.density)),
+        ]),
+        Row::new(vec![
+            Cell::from("TX Processed"),
+            Cell::from(format_metric_u64(metrics.tx_processed)),
+        ]),
+        Row::new(vec![
+            Cell::from("Forks"),
+            Cell::from(format_metric_u64(metrics.forks)),
         ]),
         Row::new(vec![
             Cell::from(Span::styled(
                 "Connected Peers",
-                Style::default().fg(health_to_color(peer_health)),
+                Style::default().fg(health_to_color(peer_health, palette)),
             )),
             Cell::from(Span::styled(
                 format_metric_u64(metrics.peers_connected),
-                Style::default().fg(health_to_color(peer_health)),
+                Style::default().fg(health_to_color(peer_health, palette)),
             )),
         ]),
     ];
@@ -229,11 +255,11 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
         rows.push(Row::new(vec![
             Cell::from(Span::styled(
                 "KES Remaining",
-                Style::default().fg(health_to_color(kes_health)),
+                Style::default().fg(health_to_color(kes_health, palette)),
             )),
             Cell::from(Span::styled(
                 format_kes_remaining(metrics.kes_remaining),
-                Style::default().fg(health_to_color(kes_health)),
+                Style::default().fg(health_to_color(kes_health, palette)),
             )),
         ]));
     }
@@ -245,14 +271,15 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Chain Status "),
+            .title(" Chain Status ")
+            .border_style(Style::default().fg(palette.border)),
     );
 
     frame.render_widget(table, area);
 }
 
 /// Draw epoch progress gauge
-fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let progress = node.epoch_progress().unwrap_or(0.0);
     let time_remaining = node.epoch_time_remaining();
@@ -268,29 +295,30 @@ fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
 
     // Color based on how close to epoch end
     let gauge_color = match progress {
-        p if p >= 95.0 => Color::Yellow,
-        p if p >= 80.0 => Color::Cyan,
-        _ => Color::Green,
+        p if p >= 95.0 => palette.warning,
+        p if p >= 80.0 => palette.primary,
+        _ => palette.healthy,
     };
 
     let gauge = Gauge::default()
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Epoch Progress "),
+                .title(" Epoch Progress ")
+                .border_style(Style::default().fg(palette.border)),
         )
         .gauge_style(Style::default().fg(gauge_color).bg(Color::DarkGray))
         .ratio(progress / 100.0)
         .label(Span::styled(
             label,
-            Style::default().fg(Color::White).bold(),
+            Style::default().fg(palette.text).bold(),
         ));
 
     frame.render_widget(gauge, area);
 }
 
 /// Draw block height sparkline
-fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let data = node.history.block_height.as_slice();
 
@@ -314,34 +342,154 @@ fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let sparkline = Sparkline::default()
-        .block(Block::default().borders(Borders::ALL).title(title))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(Style::default().fg(palette.border)),
+        )
         .data(&normalized)
-        .style(Style::default().fg(Color::Cyan));
+        .style(Style::default().fg(palette.sparkline));
 
     frame.render_widget(sparkline, area);
 }
 
-/// Draw resource/system metrics panel
-fn draw_resource_panel(frame: &mut Frame, area: Rect, app: &App) {
+/// Draw network and peer metrics panel
+fn draw_network_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7), // Resource metrics table
-            Constraint::Min(4),    // Memory sparkline
+            Constraint::Length(10), // Connection metrics
+            Constraint::Min(4),     // P2P peer breakdown
         ])
         .split(area);
 
-    draw_resource_metrics(frame, chunks[0], app);
-    draw_memory_sparkline(frame, chunks[1], app);
+    draw_connection_metrics(frame, chunks[0], app, palette);
+    draw_peer_breakdown(frame, chunks[1], app, palette);
+}
+
+/// Draw connection and block fetch metrics
+fn draw_connection_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let metrics = &node.metrics;
+
+    let rows = vec![
+        Row::new(vec![
+            Cell::from("Incoming"),
+            Cell::from(format_metric_u64(metrics.incoming_connections)),
+        ]),
+        Row::new(vec![
+            Cell::from("Outgoing"),
+            Cell::from(format_metric_u64(metrics.outgoing_connections)),
+        ]),
+        Row::new(vec![
+            Cell::from("Duplex"),
+            Cell::from(format_metric_u64(metrics.full_duplex_connections)),
+        ]),
+        Row::new(vec![
+            Cell::from("Unidirectional"),
+            Cell::from(format_metric_u64(metrics.unidirectional_connections)),
+        ]),
+        Row::new(vec![
+            Cell::from("Prunable"),
+            Cell::from(format_metric_u64(metrics.prunable_connections)),
+        ]),
+        Row::new(vec![
+            Cell::from("Block Delay"),
+            Cell::from(format_block_delay(metrics.block_delay_s)),
+        ]),
+        Row::new(vec![
+            Cell::from("Blocks Served"),
+            Cell::from(format_metric_u64(metrics.blocks_served)),
+        ]),
+        Row::new(vec![
+            Cell::from("Blocks Late"),
+            Cell::from(format_metric_u64(metrics.blocks_late)),
+        ]),
+    ];
+
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(50), Constraint::Percentage(50)],
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Network & Block Fetch ")
+            .border_style(Style::default().fg(palette.border)),
+    );
+
+    frame.render_widget(table, area);
+}
+
+/// Draw P2P peer classification breakdown
+fn draw_peer_breakdown(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let metrics = &node.metrics;
+    let p2p = &metrics.p2p;
+
+    let rows = vec![
+        Row::new(vec![
+            Cell::from("Cold Peers"),
+            Cell::from(format_metric_u64(p2p.cold_peers)),
+        ]),
+        Row::new(vec![
+            Cell::from("Warm Peers"),
+            Cell::from(format_metric_u64(p2p.warm_peers)),
+        ]),
+        Row::new(vec![
+            Cell::from("Hot Peers"),
+            Cell::from(format_metric_u64(p2p.hot_peers)),
+        ]),
+        Row::new(vec![
+            Cell::from("Duplex Peers"),
+            Cell::from(format_metric_u64(p2p.duplex_peers)),
+        ]),
+        Row::new(vec![
+            Cell::from("Bidirectional"),
+            Cell::from(format_metric_u64(p2p.bidirectional_peers)),
+        ]),
+        Row::new(vec![
+            Cell::from("Unidirectional"),
+            Cell::from(format_metric_u64(p2p.unidirectional_peers)),
+        ]),
+    ];
+
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(50), Constraint::Percentage(50)],
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" P2P Peer Classification ")
+            .border_style(Style::default().fg(palette.border)),
+    );
+
+    frame.render_widget(table, area);
+}
+
+/// Draw resource/system metrics panel
+fn draw_resource_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(13), // Resource metrics table (expanded)
+            Constraint::Min(2),     // Memory sparkline (minimal height)
+        ])
+        .split(area);
+
+    draw_resource_metrics(frame, chunks[0], app, palette);
+    draw_memory_sparkline(frame, chunks[1], app, palette);
 }
 
 /// Draw resource/system metrics
-fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let metrics = &node.metrics;
     let memory_health = node.memory_health();
 
-    let rows = vec![
+    let mut rows = vec![
         Row::new(vec![
             Cell::from("Uptime"),
             Cell::from(format_uptime(metrics.uptime_seconds)),
@@ -349,12 +497,24 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
         Row::new(vec![
             Cell::from(Span::styled(
                 "Memory Used",
-                Style::default().fg(health_to_color(memory_health)),
+                Style::default().fg(health_to_color(memory_health, palette)),
             )),
             Cell::from(Span::styled(
                 format_bytes(metrics.memory_used),
-                Style::default().fg(health_to_color(memory_health)),
+                Style::default().fg(health_to_color(memory_health, palette)),
             )),
+        ]),
+        Row::new(vec![
+            Cell::from("Memory Heap"),
+            Cell::from(format_bytes(metrics.memory_heap)),
+        ]),
+        Row::new(vec![
+            Cell::from("GC Minor"),
+            Cell::from(format_metric_u64(metrics.gc_minor)),
+        ]),
+        Row::new(vec![
+            Cell::from("GC Major"),
+            Cell::from(format_metric_u64(metrics.gc_major)),
         ]),
         Row::new(vec![
             Cell::from("CPU Time"),
@@ -370,17 +530,34 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
         ]),
     ];
 
+    // Add forging metrics if available (block producer)
+    if metrics.blocks_adopted.is_some() || metrics.blocks_didnt_adopt.is_some() {
+        rows.push(Row::new(vec![
+            Cell::from("Blocks Adopted"),
+            Cell::from(format_metric_u64(metrics.blocks_adopted)),
+        ]));
+        rows.push(Row::new(vec![
+            Cell::from("Blocks Failed"),
+            Cell::from(format_metric_u64(metrics.blocks_didnt_adopt)),
+        ]));
+    }
+
     let table = Table::new(
         rows,
         [Constraint::Percentage(50), Constraint::Percentage(50)],
     )
-    .block(Block::default().borders(Borders::ALL).title(" Resources "));
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Resources & Forging ")
+            .border_style(Style::default().fg(palette.border)),
+    );
 
     frame.render_widget(table, area);
 }
 
 /// Draw memory usage sparkline
-fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let data = node.history.memory_used.as_slice();
 
@@ -398,54 +575,65 @@ fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let sparkline = Sparkline::default()
-        .block(Block::default().borders(Borders::ALL).title(" Memory "))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Memory ")
+                .border_style(Style::default().fg(palette.border)),
+        )
         .data(&normalized)
-        .style(Style::default().fg(health_to_color(node.memory_health())));
+        .style(Style::default().fg(health_to_color(node.memory_health(), palette)));
 
     frame.render_widget(sparkline, area);
 }
 
 /// Draw the footer with help and status
-fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let endpoint = format!("{}:{}", node.config.prom_host, node.config.prom_port);
 
     let footer_text = if let Some(ref error) = node.last_error {
         Line::from(vec![
-            Span::styled(" Error: ", Style::default().fg(Color::Red).bold()),
-            Span::styled(truncate_string(error, 60), Style::default().fg(Color::Red)),
+            Span::styled(" Error: ", Style::default().fg(palette.critical).bold()),
+            Span::styled(truncate_string(error, 60), Style::default().fg(palette.critical)),
         ])
     } else {
         let mut spans = vec![
-            Span::styled(" [q] ", Style::default().fg(Color::Yellow)),
+            Span::styled(" [q] ", Style::default().fg(palette.tertiary)),
             Span::raw("Quit  "),
-            Span::styled("[r] ", Style::default().fg(Color::Yellow)),
+            Span::styled("[r] ", Style::default().fg(palette.tertiary)),
             Span::raw("Refresh  "),
-            Span::styled("[?] ", Style::default().fg(Color::Yellow)),
+            Span::styled("[?] ", Style::default().fg(palette.tertiary)),
             Span::raw("Help  "),
+            Span::styled("[t] ", Style::default().fg(palette.tertiary)),
+            Span::raw("Theme  "),
         ];
 
         // Add node switching hints if multi-node
         if app.is_multi_node() {
-            spans.push(Span::styled("[Tab] ", Style::default().fg(Color::Yellow)));
+            spans.push(Span::styled("[Tab] ", Style::default().fg(palette.tertiary)));
             spans.push(Span::raw("Next  "));
-            spans.push(Span::styled("[1-9] ", Style::default().fg(Color::Yellow)));
+            spans.push(Span::styled("[1-9] ", Style::default().fg(palette.tertiary)));
             spans.push(Span::raw("Select  "));
         }
 
         spans.push(Span::raw("│ "));
-        spans.push(Span::styled(endpoint, Style::default().fg(Color::DarkGray)));
+        spans.push(Span::styled(endpoint, Style::default().fg(palette.text_muted)));
 
         Line::from(spans)
     };
 
-    let footer = Paragraph::new(footer_text).block(Block::default().borders(Borders::ALL));
+    let footer = Paragraph::new(footer_text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(palette.border)),
+    );
 
     frame.render_widget(footer, area);
 }
 
 /// Draw the help popup overlay
-fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
+fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: &Palette) {
     let popup_area = centered_rect(60, if is_multi_node { 60 } else { 50 }, area);
 
     // Clear the background
@@ -454,19 +642,23 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
     let mut help_lines = vec![
         Line::from(Span::styled(
             "Keyboard Shortcuts",
-            Style::default().bold().underlined(),
+            Style::default().bold().underlined().fg(palette.primary),
         )),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  q, Esc    ", Style::default().fg(Color::Yellow)),
+            Span::styled("  q, Esc    ", Style::default().fg(palette.tertiary)),
             Span::raw("Quit sview"),
         ]),
         Line::from(vec![
-            Span::styled("  r         ", Style::default().fg(Color::Yellow)),
+            Span::styled("  r         ", Style::default().fg(palette.tertiary)),
             Span::raw("Force refresh metrics"),
         ]),
         Line::from(vec![
-            Span::styled("  ?         ", Style::default().fg(Color::Yellow)),
+            Span::styled("  t         ", Style::default().fg(palette.tertiary)),
+            Span::raw("Cycle color theme"),
+        ]),
+        Line::from(vec![
+            Span::styled("  ?         ", Style::default().fg(palette.tertiary)),
             Span::raw("Toggle this help"),
         ]),
     ];
@@ -476,23 +668,23 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
         help_lines.push(Line::from(""));
         help_lines.push(Line::from(Span::styled(
             "Multi-Node Navigation",
-            Style::default().bold().underlined(),
+            Style::default().bold().underlined().fg(palette.primary),
         )));
         help_lines.push(Line::from(""));
         help_lines.push(Line::from(vec![
-            Span::styled("  Tab       ", Style::default().fg(Color::Yellow)),
+            Span::styled("  Tab       ", Style::default().fg(palette.tertiary)),
             Span::raw("Next node"),
         ]));
         help_lines.push(Line::from(vec![
-            Span::styled("  Shift+Tab ", Style::default().fg(Color::Yellow)),
+            Span::styled("  Shift+Tab ", Style::default().fg(palette.tertiary)),
             Span::raw("Previous node"),
         ]));
         help_lines.push(Line::from(vec![
-            Span::styled("  ← →       ", Style::default().fg(Color::Yellow)),
+            Span::styled("  ← →       ", Style::default().fg(palette.tertiary)),
             Span::raw("Switch nodes"),
         ]));
         help_lines.push(Line::from(vec![
-            Span::styled("  1-9       ", Style::default().fg(Color::Yellow)),
+            Span::styled("  1-9       ", Style::default().fg(palette.tertiary)),
             Span::raw("Select node by number"),
         ]));
     }
@@ -501,25 +693,25 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
         Line::from(""),
         Line::from(Span::styled(
             "Health Indicators",
-            Style::default().bold().underlined(),
+            Style::default().bold().underlined().fg(palette.primary),
         )),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  ● Green   ", Style::default().fg(Color::Green)),
-            Span::raw("Healthy"),
+            Span::styled("  ● Healthy   ", Style::default().fg(palette.healthy)),
+            Span::raw("Good status"),
         ]),
         Line::from(vec![
-            Span::styled("  ● Yellow  ", Style::default().fg(Color::Yellow)),
-            Span::raw("Warning (needs attention)"),
+            Span::styled("  ● Warning   ", Style::default().fg(palette.warning)),
+            Span::raw("Needs attention"),
         ]),
         Line::from(vec![
-            Span::styled("  ● Red     ", Style::default().fg(Color::Red)),
-            Span::raw("Critical (action required)"),
+            Span::styled("  ● Critical  ", Style::default().fg(palette.critical)),
+            Span::raw("Action required"),
         ]),
         Line::from(""),
         Line::from(Span::styled(
             "Press any key to close",
-            Style::default().fg(Color::DarkGray).italic(),
+            Style::default().fg(palette.text_muted).italic(),
         )),
     ]);
 
@@ -528,7 +720,7 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Help ")
-                .border_style(Style::default().fg(Color::Cyan)),
+                .border_style(Style::default().fg(palette.primary)),
         )
         .wrap(Wrap { trim: false });
 
@@ -560,11 +752,11 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 // Formatting helpers
 // ============================================================================
 
-fn health_to_color(status: HealthStatus) -> Color {
+fn health_to_color(status: HealthStatus, palette: &Palette) -> Color {
     match status {
-        HealthStatus::Good => Color::Green,
-        HealthStatus::Warning => Color::Yellow,
-        HealthStatus::Critical => Color::Red,
+        HealthStatus::Good => palette.healthy,
+        HealthStatus::Warning => palette.warning,
+        HealthStatus::Critical => palette.critical,
     }
 }
 
@@ -708,5 +900,21 @@ fn format_time_remaining(seconds: u64) -> String {
         format!("{}h {}m", hours, mins)
     } else {
         format!("{}m", mins)
+    }
+}
+
+fn format_density(density: Option<f64>) -> String {
+    match density {
+        Some(d) => format!("{:.4}", d),
+        None => "—".to_string(),
+    }
+}
+
+fn format_block_delay(secs: Option<f64>) -> String {
+    match secs {
+        Some(s) if s < 0.001 => "< 1ms".to_string(),
+        Some(s) if s < 1.0 => format!("{:.1}ms", s * 1000.0),
+        Some(s) => format!("{:.2}s", s),
+        None => "—".to_string(),
     }
 }

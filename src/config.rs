@@ -94,6 +94,10 @@ pub struct GlobalConfig {
     /// Epoch length in slots
     #[serde(default = "default_epoch_length")]
     pub epoch_length: u64,
+
+    /// Color theme for TUI
+    #[serde(default = "default_theme")]
+    pub theme: String,
 }
 
 impl Default for GlobalConfig {
@@ -104,6 +108,7 @@ impl Default for GlobalConfig {
             refresh_interval_secs: default_refresh(),
             history_length: default_history(),
             epoch_length: default_epoch_length(),
+            theme: default_theme(),
         }
     }
 }
@@ -170,6 +175,9 @@ fn default_host() -> String {
 }
 fn default_port() -> u16 {
     12798
+}
+fn default_theme() -> String {
+    "dark-default".to_string()
 }
 
 /// Runtime configuration for a single node
