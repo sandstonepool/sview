@@ -91,7 +91,7 @@ fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8), // Chain metrics table (extra row for KES on block producers)
+            Constraint::Length(9), // Chain metrics table (extra rows for tip age + KES)
             Constraint::Min(4),    // Block height sparkline
         ])
         .split(area);
@@ -106,11 +106,22 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
     let sync_health = app.sync_health();
     let peer_health = app.peer_health();
     let kes_health = app.kes_health();
+    let tip_health = app.tip_health();
 
     let mut rows = vec![
         Row::new(vec![
             Cell::from("Block Height"),
             Cell::from(format_metric_u64(metrics.block_height)),
+        ]),
+        Row::new(vec![
+            Cell::from(Span::styled(
+                "Tip Age",
+                Style::default().fg(health_to_color(tip_health)),
+            )),
+            Cell::from(Span::styled(
+                format_tip_age(app.tip_age_secs()),
+                Style::default().fg(health_to_color(tip_health)),
+            )),
         ]),
         Row::new(vec![
             Cell::from("Slot"),
@@ -484,6 +495,15 @@ fn format_kes_remaining(periods: Option<u64>) -> String {
             let days_approx = (p as f64 * 1.5) as u64;
             format!("{} (~{}d)", p, days_approx)
         }
+        None => "—".to_string(),
+    }
+}
+
+fn format_tip_age(seconds: Option<u64>) -> String {
+    match seconds {
+        Some(s) if s < 60 => format!("{}s ago", s),
+        Some(s) if s < 3600 => format!("{}m {}s ago", s / 60, s % 60),
+        Some(s) => format!("{}h {}m ago", s / 3600, (s % 3600) / 60),
         None => "—".to_string(),
     }
 }

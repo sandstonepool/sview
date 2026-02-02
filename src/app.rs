@@ -43,6 +43,10 @@ pub struct App {
     pub mode: AppMode,
     /// Fetch count (for tracking uptime)
     pub fetch_count: u64,
+    /// Last observed block height (for tip age tracking)
+    last_block_height: Option<u64>,
+    /// Time when block height last changed
+    last_block_time: Option<Instant>,
 }
 
 impl App {
@@ -61,6 +65,8 @@ impl App {
             last_refresh: Instant::now(),
             mode: AppMode::Normal,
             fetch_count: 0,
+            last_block_height: None,
+            last_block_time: None,
         }
     }
 
@@ -68,6 +74,19 @@ impl App {
     pub async fn fetch_metrics(&mut self) {
         match self.metrics_client.fetch().await {
             Ok(metrics) => {
+                // Track tip age: detect when block height changes
+                if let Some(new_height) = metrics.block_height {
+                    let height_changed = self
+                        .last_block_height
+                        .map(|old| old != new_height)
+                        .unwrap_or(true);
+
+                    if height_changed {
+                        self.last_block_height = Some(new_height);
+                        self.last_block_time = Some(Instant::now());
+                    }
+                }
+
                 self.metrics = metrics;
                 self.history.update(&self.metrics);
                 self.last_fetch = Some(Instant::now());
@@ -151,6 +170,24 @@ impl App {
         }
     }
 
+    /// Get seconds since last block was received
+    pub fn tip_age_secs(&self) -> Option<u64> {
+        self.last_block_time
+            .map(|t| t.elapsed().as_secs())
+    }
+
+    /// Get the health status for tip age
+    pub fn tip_health(&self) -> HealthStatus {
+        match self.tip_age_secs() {
+            // Mainnet produces blocks every ~20 seconds on average
+            // Warn if no block for >60s, critical if >120s
+            Some(age) if age < 60 => HealthStatus::Good,
+            Some(age) if age < 120 => HealthStatus::Warning,
+            Some(_) => HealthStatus::Critical,
+            None => HealthStatus::Good, // No data yet
+        }
+    }
+
     /// Get the overall node health
     pub fn overall_health(&self) -> HealthStatus {
         if !self.metrics.connected {
@@ -162,6 +199,7 @@ impl App {
             self.sync_health(),
             self.memory_health(),
             self.kes_health(),
+            self.tip_health(),
         ];
 
         if statuses.contains(&HealthStatus::Critical) {
