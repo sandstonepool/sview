@@ -411,6 +411,25 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         }
     }
 
+    // Calculate peers_connected from peer states if direct metric is unavailable
+    // Real Cardano nodes expose peerSelection_* metrics, not connectedPeers_int
+    if metrics.peers_connected.is_none() {
+        let cold = metrics.p2p.cold_peers.unwrap_or(0);
+        let warm = metrics.p2p.warm_peers.unwrap_or(0);
+        let hot = metrics.p2p.hot_peers.unwrap_or(0);
+
+        if cold > 0 || warm > 0 || hot > 0 {
+            metrics.peers_connected = Some(cold + warm + hot);
+            debug!(
+                "Calculated peers_connected from peer states: {} + {} + {} = {}",
+                cold,
+                warm,
+                hot,
+                metrics.peers_connected.unwrap_or(0)
+            );
+        }
+    }
+
     // Log available metrics if in debug mode
     let available_metrics: Vec<&str> = metrics
         .raw

@@ -12,8 +12,18 @@ cardano_node_metrics_blockNum_int             # Block height
 cardano_node_metrics_slotNum_int              # Current slot number
 cardano_node_metrics_epoch_int                # Current epoch
 cardano_node_metrics_slotInEpoch_int          # Slot within epoch
-cardano_node_metrics_connectedPeers_int       # Connected peer count
 ```
+
+### Peer Metrics (Connected Peers Count)
+sview calculates **connected peers** from the sum of peer states:
+```
+cardano_node_metrics_peerSelection_cold       # Cold peers (legacy)
+cardano_node_metrics_peerSelection_warm       # Warm peers (legacy)
+cardano_node_metrics_peerSelection_hot        # Hot peers (legacy)
+```
+
+**Note:** The metric `cardano_node_metrics_connectedPeers_int` does not exist on real Cardano nodes.
+sview automatically calculates this as: `cold_peers + warm_peers + hot_peers`.
 
 ## Optional Metrics (May Not Be Present)
 
