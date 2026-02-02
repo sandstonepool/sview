@@ -1,0 +1,21 @@
+[global]
+network = "mainnet"
+refresh_interval_secs = 2
+
+[[node]]
+name = "Relay 1"
+host = "127.0.0.1"
+port = 12798
+role = "relay"
+
+[[node]]
+name = "Relay 2"
+host = "127.0.0.2"
+port = 12798
+role = "relay"
+
+[[node]]
+name = "Block Producer"
+host = "127.0.0.3"
+port = 12798
+role = "bp"

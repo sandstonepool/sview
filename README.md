@@ -73,19 +73,19 @@ Create a config file at `~/.config/sview/config.toml`:
 network = "mainnet"
 refresh_interval_secs = 2
 
-[[node]]
+[[nodes]]
 name = "Relay 1"
 host = "10.0.0.1"
 port = 12798
 role = "relay"
 
-[[node]]
+[[nodes]]
 name = "Relay 2"
 host = "10.0.0.2"
 port = 12798
 role = "relay"
 
-[[node]]
+[[nodes]]
 name = "Block Producer"
 host = "10.0.0.3"
 port = 12798
@@ -147,8 +147,8 @@ refresh_interval_secs = 2        # How often to poll metrics
 history_length = 60              # Sparkline data points
 epoch_length = 432000            # Slots per epoch (432000 for mainnet)
 
-# Node definitions (one [[node]] block per node)
-[[node]]
+# Node definitions (one [[nodes]] block per node)
+[[nodes]]
 name = "My Relay"                # Display name (required)
 host = "127.0.0.1"               # Prometheus host (default: 127.0.0.1)
 port = 12798                     # Prometheus port (default: 12798)

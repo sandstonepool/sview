@@ -66,8 +66,8 @@ pub struct FileConfig {
     #[serde(default)]
     pub global: GlobalConfig,
 
-    /// Node definitions
-    #[serde(default, rename = "node")]
+    /// Node definitions (array of tables: [[nodes]] in TOML)
+    #[serde(default)]
     pub nodes: Vec<NodeConfig>,
 }
 
