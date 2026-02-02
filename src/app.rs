@@ -507,9 +507,29 @@ impl App {
     }
 
     /// Get the currently selected peer (if any)
-    pub fn selected_peer(&self) -> Option<&crate::sockets::PeerConnection> {
+    /// Note: peers are sorted the same way as in the UI (incoming first, then by RTT)
+    pub fn selected_peer(&self) -> Option<crate::sockets::PeerConnection> {
         let peers = &self.nodes[self.selected_node].peer_connections;
-        peers.get(self.peer_list_selected)
+
+        // Sort peers the same way as in draw_peers_view
+        let mut sorted_peers = peers.clone();
+        sorted_peers.sort_by(|a, b| {
+            // Sort by direction first (incoming first)
+            match (a.incoming, b.incoming) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => {
+                    // Then by RTT (lower is better)
+                    let a_rtt = a.rtt_ms.unwrap_or(f64::MAX);
+                    let b_rtt = b.rtt_ms.unwrap_or(f64::MAX);
+                    a_rtt
+                        .partial_cmp(&b_rtt)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }
+            }
+        });
+
+        sorted_peers.get(self.peer_list_selected).cloned()
     }
 
     /// Cycle to the next color theme
