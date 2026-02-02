@@ -284,7 +284,7 @@ fn draw_chain_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
                 .title(" Epoch ")
                 .border_style(Style::default().fg(palette.border)),
         )
-        .gauge_style(Style::default().fg(gauge_color).bg(Color::DarkGray))
+        .gauge_style(Style::default().fg(gauge_color).bg(palette.gauge_bg))
         .ratio(progress / 100.0)
         .label(Span::styled(
             label,
@@ -328,7 +328,7 @@ fn draw_network_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
         .gauge_style(
             Style::default()
                 .fg(health_to_color(sync_health, palette))
-                .bg(Color::DarkGray),
+                .bg(palette.gauge_bg),
         )
         .ratio((progress / 100.0).min(1.0))
         .label(Span::styled(
@@ -378,7 +378,7 @@ fn draw_resources_column(frame: &mut Frame, area: Rect, app: &App, palette: &Pal
         .gauge_style(
             Style::default()
                 .fg(health_to_color(memory_health, palette))
-                .bg(Color::DarkGray),
+                .bg(palette.gauge_bg),
         )
         .ratio(ratio)
         .label(Span::styled(
@@ -911,7 +911,7 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
 
             // Highlight selected row
             if is_selected {
-                row = row.style(Style::default().bg(Color::DarkGray));
+                row = row.style(Style::default().bg(palette.gauge_bg));
             }
 
             rows.push(row);

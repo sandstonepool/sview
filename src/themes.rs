@@ -105,132 +105,142 @@ pub struct Palette {
     // Special colors
     pub sparkline: Color, // Sparkline graphs
     pub gauge: Color,     // Gauge/progress bar
+    pub gauge_bg: Color,  // Gauge background (for proper contrast)
 }
 
 impl Palette {
     /// Dark Default: Cool blues and greens (classic hacker aesthetic)
+    /// High contrast: bright colors on dark background
     fn dark_default() -> Self {
         Palette {
-            primary: Color::Rgb(139, 233, 253),    // Pastel cyan
-            secondary: Color::Rgb(189, 147, 249),  // Pastel purple
-            tertiary: Color::Rgb(255, 198, 109),   // Pastel orange
-            healthy: Color::Rgb(166, 227, 161),    // Pastel green
-            warning: Color::Rgb(249, 226, 175),    // Pastel yellow
-            critical: Color::Rgb(255, 146, 146),   // Pastel red
-            border: Color::Rgb(98, 112, 147),      // Muted blue-gray
-            text: Color::Rgb(229, 229, 229),       // Light gray
-            text_muted: Color::Rgb(128, 128, 128), // Medium gray
+            primary: Color::Rgb(139, 233, 253),    // Bright cyan
+            secondary: Color::Rgb(189, 147, 249),  // Bright purple
+            tertiary: Color::Rgb(255, 198, 109),   // Bright orange
+            healthy: Color::Rgb(80, 250, 123),     // Bright green (improved)
+            warning: Color::Rgb(255, 230, 100),    // Bright yellow (improved)
+            critical: Color::Rgb(255, 85, 85),     // Bright red (improved)
+            border: Color::Rgb(98, 114, 164),      // Blue-gray border
+            text: Color::Rgb(248, 248, 242),       // Near-white text
+            text_muted: Color::Rgb(150, 150, 170), // Lighter muted (improved contrast)
             background: Color::Black,
-            sparkline: Color::Rgb(139, 233, 253), // Match primary
-            gauge: Color::Rgb(166, 227, 161),     // Match healthy
+            sparkline: Color::Rgb(139, 233, 253),
+            gauge: Color::Rgb(80, 250, 123),
+            gauge_bg: Color::Rgb(40, 42, 54), // Dark but not black
         }
     }
 
     /// Dark Warm: Oranges, pinks, and warm tones
     fn dark_warm() -> Self {
         Palette {
-            primary: Color::Rgb(255, 179, 155),   // Pastel coral
-            secondary: Color::Rgb(255, 165, 200), // Pastel rose
-            tertiary: Color::Rgb(255, 210, 126),  // Pastel peach
-            healthy: Color::Rgb(200, 238, 181),   // Pastel mint
-            warning: Color::Rgb(255, 218, 138),   // Pastel gold
-            critical: Color::Rgb(255, 150, 140),  // Pastel salmon
-            border: Color::Rgb(140, 100, 80),     // Warm brown
-            text: Color::Rgb(245, 235, 225),      // Warm white
-            text_muted: Color::Rgb(130, 110, 90), // Warm gray
+            primary: Color::Rgb(255, 179, 155),    // Coral
+            secondary: Color::Rgb(255, 121, 198),  // Bright pink (improved)
+            tertiary: Color::Rgb(255, 210, 126),   // Peach
+            healthy: Color::Rgb(152, 251, 152),    // Pale green (improved)
+            warning: Color::Rgb(255, 218, 85),     // Brighter gold (improved)
+            critical: Color::Rgb(255, 110, 100),   // Brighter salmon (improved)
+            border: Color::Rgb(140, 100, 80),      // Warm brown
+            text: Color::Rgb(255, 245, 238),       // Seashell white (warmer)
+            text_muted: Color::Rgb(180, 160, 140), // Warmer gray (improved contrast)
             background: Color::Black,
-            sparkline: Color::Rgb(255, 179, 155), // Match primary
-            gauge: Color::Rgb(255, 210, 126),     // Warm accent
+            sparkline: Color::Rgb(255, 179, 155),
+            gauge: Color::Rgb(255, 210, 126),
+            gauge_bg: Color::Rgb(50, 40, 35), // Warm dark brown
         }
     }
 
     /// Dark Purple: Purple-dominant pastel theme
     fn dark_purple() -> Self {
         Palette {
-            primary: Color::Rgb(209, 172, 221),    // Pastel purple
-            secondary: Color::Rgb(233, 168, 201),  // Pastel magenta
-            tertiary: Color::Rgb(255, 183, 177),   // Pastel pink
-            healthy: Color::Rgb(178, 223, 219),    // Pastel cyan
-            warning: Color::Rgb(255, 214, 110),    // Pastel yellow
-            critical: Color::Rgb(255, 157, 167),   // Pastel red-pink
-            border: Color::Rgb(100, 80, 130),      // Purple-gray
-            text: Color::Rgb(240, 240, 245),       // Cool white
-            text_muted: Color::Rgb(120, 100, 140), // Purple-muted
+            primary: Color::Rgb(209, 172, 255),   // Brighter purple (improved)
+            secondary: Color::Rgb(255, 150, 200), // Brighter magenta (improved)
+            tertiary: Color::Rgb(255, 183, 177),  // Pink
+            healthy: Color::Rgb(120, 255, 214),   // Bright cyan-green (improved)
+            warning: Color::Rgb(255, 220, 100),   // Brighter yellow (improved)
+            critical: Color::Rgb(255, 120, 140),  // Brighter red-pink (improved)
+            border: Color::Rgb(120, 100, 160),    // Purple-gray (improved)
+            text: Color::Rgb(248, 248, 255),      // Ghost white
+            text_muted: Color::Rgb(160, 140, 180), // Lighter purple-muted (improved)
             background: Color::Black,
-            sparkline: Color::Rgb(209, 172, 221), // Match primary
-            gauge: Color::Rgb(233, 168, 201),     // Match secondary
+            sparkline: Color::Rgb(209, 172, 255),
+            gauge: Color::Rgb(255, 150, 200),
+            gauge_bg: Color::Rgb(45, 35, 55), // Dark purple
         }
     }
 
     /// Dark Teal: Teal and cyan-dominant theme
     fn dark_teal() -> Self {
         Palette {
-            primary: Color::Rgb(155, 235, 215),    // Pastel teal
-            secondary: Color::Rgb(159, 222, 242),  // Pastel sky blue
-            tertiary: Color::Rgb(189, 224, 254),   // Pastel periwinkle
-            healthy: Color::Rgb(182, 244, 204),    // Pastel mint
-            warning: Color::Rgb(255, 229, 121),    // Pastel lime
-            critical: Color::Rgb(255, 162, 155),   // Pastel coral
-            border: Color::Rgb(85, 130, 130),      // Teal-gray
-            text: Color::Rgb(235, 245, 245),       // Cool white
-            text_muted: Color::Rgb(110, 130, 130), // Teal-muted
+            primary: Color::Rgb(100, 255, 218),    // Brighter teal (improved)
+            secondary: Color::Rgb(135, 206, 250),  // Light sky blue (improved)
+            tertiary: Color::Rgb(189, 224, 254),   // Periwinkle
+            healthy: Color::Rgb(144, 238, 144),    // Light green (improved)
+            warning: Color::Rgb(255, 235, 100),    // Brighter lime (improved)
+            critical: Color::Rgb(255, 130, 120),   // Brighter coral (improved)
+            border: Color::Rgb(95, 158, 160),      // Cadet blue (improved)
+            text: Color::Rgb(245, 255, 255),       // Azure white
+            text_muted: Color::Rgb(150, 180, 180), // Lighter teal-muted (improved)
             background: Color::Black,
-            sparkline: Color::Rgb(155, 235, 215), // Match primary
-            gauge: Color::Rgb(159, 222, 242),     // Sky blue
+            sparkline: Color::Rgb(100, 255, 218),
+            gauge: Color::Rgb(135, 206, 250),
+            gauge_bg: Color::Rgb(35, 50, 50), // Dark teal
         }
     }
 
-    /// Light Default: Soft pastels on light background
+    /// Light Default: Deep saturated colors on light background
+    /// High contrast: dark/saturated colors for readability
     fn light_default() -> Self {
         Palette {
-            primary: Color::Rgb(100, 160, 200),    // Pastel blue
-            secondary: Color::Rgb(180, 100, 200),  // Pastel purple
-            tertiary: Color::Rgb(220, 150, 80),    // Pastel brown
-            healthy: Color::Rgb(100, 180, 120),    // Pastel green
-            warning: Color::Rgb(220, 180, 40),     // Pastel gold
-            critical: Color::Rgb(220, 100, 100),   // Pastel red
-            border: Color::Rgb(160, 160, 180),     // Light gray-blue
-            text: Color::Rgb(40, 40, 50),          // Dark text
-            text_muted: Color::Rgb(120, 120, 140), // Medium gray
-            background: Color::Rgb(250, 250, 255), // Very light blue
-            sparkline: Color::Rgb(100, 160, 200),  // Match primary
-            gauge: Color::Rgb(100, 180, 120),      // Match healthy
+            primary: Color::Rgb(30, 90, 180),    // Deep blue (improved)
+            secondary: Color::Rgb(140, 50, 180), // Deep purple (improved)
+            tertiary: Color::Rgb(180, 100, 20),  // Deep brown/orange (improved)
+            healthy: Color::Rgb(30, 130, 50),    // Deep green (improved)
+            warning: Color::Rgb(180, 130, 0),    // Deep gold (improved)
+            critical: Color::Rgb(200, 40, 40),   // Deep red (improved)
+            border: Color::Rgb(100, 100, 120),   // Darker gray-blue (improved)
+            text: Color::Rgb(20, 20, 30),        // Near-black text (improved)
+            text_muted: Color::Rgb(80, 80, 100), // Dark gray (improved contrast)
+            background: Color::Rgb(250, 250, 255),
+            sparkline: Color::Rgb(30, 90, 180),
+            gauge: Color::Rgb(30, 130, 50),
+            gauge_bg: Color::Rgb(220, 220, 230), // Light gray for gauge bg
         }
     }
 
-    /// Light Warm: Peachy and warm pastels
+    /// Light Warm: Deep warm colors on cream background
     fn light_warm() -> Self {
         Palette {
-            primary: Color::Rgb(220, 140, 120),    // Pastel coral
-            secondary: Color::Rgb(220, 120, 160),  // Pastel rose
-            tertiary: Color::Rgb(240, 180, 110),   // Pastel peach
-            healthy: Color::Rgb(140, 200, 140),    // Pastel green
-            warning: Color::Rgb(240, 200, 100),    // Pastel yellow
-            critical: Color::Rgb(240, 120, 100),   // Pastel salmon
-            border: Color::Rgb(200, 150, 130),     // Warm beige
-            text: Color::Rgb(50, 30, 20),          // Warm dark text
-            text_muted: Color::Rgb(140, 100, 80),  // Warm gray
-            background: Color::Rgb(255, 250, 245), // Warm white
-            sparkline: Color::Rgb(220, 140, 120),  // Match primary
-            gauge: Color::Rgb(240, 180, 110),      // Warm accent
+            primary: Color::Rgb(180, 80, 60),    // Deep coral (improved)
+            secondary: Color::Rgb(170, 50, 100), // Deep rose (improved)
+            tertiary: Color::Rgb(180, 110, 30),  // Deep orange (improved)
+            healthy: Color::Rgb(40, 140, 60),    // Deep green (improved)
+            warning: Color::Rgb(180, 130, 0),    // Deep amber (improved)
+            critical: Color::Rgb(200, 50, 50),   // Deep red (improved)
+            border: Color::Rgb(150, 120, 100),   // Darker warm beige (improved)
+            text: Color::Rgb(40, 25, 15),        // Very dark warm (improved)
+            text_muted: Color::Rgb(100, 80, 60), // Dark warm gray (improved contrast)
+            background: Color::Rgb(255, 250, 245),
+            sparkline: Color::Rgb(180, 80, 60),
+            gauge: Color::Rgb(180, 110, 30),
+            gauge_bg: Color::Rgb(235, 225, 215), // Warm light gray
         }
     }
 
-    /// Light Cool: Minty and cool pastels
+    /// Light Cool: Deep cool colors on cool white background
     fn light_cool() -> Self {
         Palette {
-            primary: Color::Rgb(120, 200, 180),    // Pastel mint
-            secondary: Color::Rgb(140, 180, 220),  // Pastel sky
-            tertiary: Color::Rgb(200, 180, 220),   // Pastel lavender
-            healthy: Color::Rgb(140, 210, 160),    // Pastel green
-            warning: Color::Rgb(230, 210, 120),    // Pastel yellow
-            critical: Color::Rgb(240, 140, 130),   // Pastel red
-            border: Color::Rgb(140, 170, 170),     // Cool gray
-            text: Color::Rgb(30, 50, 60),          // Cool dark text
-            text_muted: Color::Rgb(100, 130, 140), // Cool gray
-            background: Color::Rgb(245, 250, 252), // Cool white
-            sparkline: Color::Rgb(120, 200, 180),  // Match primary
-            gauge: Color::Rgb(140, 180, 220),      // Sky blue
+            primary: Color::Rgb(0, 130, 110),    // Deep teal (improved)
+            secondary: Color::Rgb(50, 100, 170), // Deep sky blue (improved)
+            tertiary: Color::Rgb(120, 90, 160),  // Deep lavender (improved)
+            healthy: Color::Rgb(30, 140, 70),    // Deep green (improved)
+            warning: Color::Rgb(180, 140, 0),    // Deep gold (improved)
+            critical: Color::Rgb(200, 60, 60),   // Deep red (improved)
+            border: Color::Rgb(100, 130, 140),   // Darker cool gray (improved)
+            text: Color::Rgb(20, 35, 45),        // Very dark cool (improved)
+            text_muted: Color::Rgb(70, 95, 110), // Dark cool gray (improved contrast)
+            background: Color::Rgb(245, 250, 252),
+            sparkline: Color::Rgb(0, 130, 110),
+            gauge: Color::Rgb(50, 100, 170),
+            gauge_bg: Color::Rgb(220, 230, 235), // Cool light gray
         }
     }
 }
