@@ -270,6 +270,7 @@ impl NodeState {
     }
 
     /// Get the status text for display
+    #[allow(dead_code)]
     pub fn status_text(&self) -> &str {
         if self.metrics.connected {
             "Connected"
