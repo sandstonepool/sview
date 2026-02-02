@@ -385,9 +385,7 @@ fn health_to_color(status: HealthStatus) -> Color {
 }
 
 fn format_metric_u64(value: Option<u64>) -> String {
-    value
-        .map(format_number)
-        .unwrap_or_else(|| "—".to_string())
+    value.map(format_number).unwrap_or_else(|| "—".to_string())
 }
 
 fn format_number(n: u64) -> String {
