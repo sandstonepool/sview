@@ -5,62 +5,131 @@
 use crate::app::{App, AppMode, HealthStatus};
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Wrap},
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
 };
 
 /// Main draw function - renders the entire UI
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
 
-    // Create main layout
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Header
-            Constraint::Min(10),   // Main content
-            Constraint::Length(3), // Footer/status
-        ])
-        .split(area);
+    // Create main layout - add node tabs if multi-node mode
+    let chunks = if app.is_multi_node() {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Node tabs
+                Constraint::Length(3), // Header
+                Constraint::Min(10),   // Main content
+                Constraint::Length(3), // Footer/status
+            ])
+            .split(area)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Header
+                Constraint::Min(10),   // Main content
+                Constraint::Length(3), // Footer/status
+            ])
+            .split(area)
+    };
+
+    // Draw node tabs if multi-node mode
+    let (header_area, main_area, footer_area) = if app.is_multi_node() {
+        draw_node_tabs(frame, chunks[0], app);
+        (chunks[1], chunks[2], chunks[3])
+    } else {
+        (chunks[0], chunks[1], chunks[2])
+    };
 
     // Draw header
-    draw_header(frame, chunks[0], app);
+    draw_header(frame, header_area, app);
 
     // Draw main content
-    draw_main(frame, chunks[1], app);
+    draw_main(frame, main_area, app);
 
     // Draw footer
-    draw_footer(frame, chunks[2], app);
+    draw_footer(frame, footer_area, app);
 
     // Draw help overlay if in help mode
     if app.mode == AppMode::Help {
-        draw_help_popup(frame, area);
+        draw_help_popup(frame, area, app.is_multi_node());
     }
+}
+
+/// Draw the node selection tabs
+fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App) {
+    let titles: Vec<Line> = app
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, node)| {
+            let health_color = health_to_color(node.overall_health());
+            let indicator = if node.metrics.connected { "●" } else { "○" };
+            let role_suffix = match node.role {
+                crate::config::NodeRole::Bp => " [BP]",
+                crate::config::NodeRole::Relay => "",
+            };
+            Line::from(vec![
+                Span::styled(indicator, Style::default().fg(health_color)),
+                Span::raw(" "),
+                Span::raw(format!("{}{}", node.config.node_name, role_suffix)),
+                Span::styled(
+                    format!(" [{}]", i + 1),
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ])
+        })
+        .collect();
+
+    let tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title(" Nodes "))
+        .select(app.selected_node)
+        .style(Style::default().fg(Color::White))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
+        .divider(" │ ");
+
+    frame.render_widget(tabs, area);
 }
 
 /// Draw the header section with node name and status
 fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
-    let health_color = health_to_color(app.overall_health());
-    let status_indicator = if app.metrics.connected { "●" } else { "○" };
+    let node = app.current_node();
+    let health_color = health_to_color(node.overall_health());
+    let status_indicator = if node.metrics.connected { "●" } else { "○" };
+
+    let role_badge = match node.role {
+        crate::config::NodeRole::Bp => Span::styled(
+            " [BP] ",
+            Style::default().fg(Color::Magenta).bold(),
+        ),
+        crate::config::NodeRole::Relay => Span::raw(""),
+    };
 
     let header_text = Line::from(vec![
         Span::styled(
-            format!(" {} ", app.config.node_name),
+            format!(" {} ", node.config.node_name),
             Style::default().bold(),
         ),
+        role_badge,
         Span::styled(status_indicator, Style::default().fg(health_color)),
         Span::raw(" "),
         Span::styled(
-            app.status_text(),
+            node.status_text(),
             Style::default().fg(health_color).italic(),
         ),
         Span::raw(" │ "),
         Span::styled(
-            format!("Network: {}", app.config.network),
+            format!("Network: {}", node.config.network),
             Style::default().fg(Color::Cyan),
         ),
         Span::raw(" │ "),
         Span::styled(
-            format!("Node: {}", app.metrics.node_type),
+            format!("Node: {}", node.metrics.node_type),
             Style::default().fg(Color::Yellow),
         ),
     ]);
@@ -91,7 +160,7 @@ fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(9), // Chain metrics table (extra rows for tip age + KES)
+            Constraint::Length(9), // Chain metrics table
             Constraint::Length(3), // Epoch progress gauge
             Constraint::Min(4),    // Block height sparkline
         ])
@@ -104,11 +173,12 @@ fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Draw chain metrics table
 fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
-    let metrics = &app.metrics;
-    let sync_health = app.sync_health();
-    let peer_health = app.peer_health();
-    let kes_health = app.kes_health();
-    let tip_health = app.tip_health();
+    let node = app.current_node();
+    let metrics = &node.metrics;
+    let sync_health = node.sync_health();
+    let peer_health = node.peer_health();
+    let kes_health = node.kes_health();
+    let tip_health = node.tip_health();
 
     let mut rows = vec![
         Row::new(vec![
@@ -121,7 +191,7 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(health_to_color(tip_health)),
             )),
             Cell::from(Span::styled(
-                format_tip_age(app.tip_age_secs()),
+                format_tip_age(node.tip_age_secs()),
                 Style::default().fg(health_to_color(tip_health)),
             )),
         ]),
@@ -184,8 +254,9 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Draw epoch progress gauge
 fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
-    let progress = app.epoch_progress().unwrap_or(0.0);
-    let time_remaining = app.epoch_time_remaining();
+    let node = app.current_node();
+    let progress = node.epoch_progress().unwrap_or(0.0);
+    let time_remaining = node.epoch_time_remaining();
 
     let label = match time_remaining {
         Some(secs) => format!(
@@ -198,7 +269,7 @@ fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
 
     // Color based on how close to epoch end
     let gauge_color = match progress {
-        p if p >= 95.0 => Color::Yellow, // Near epoch boundary
+        p if p >= 95.0 => Color::Yellow,
         p if p >= 80.0 => Color::Cyan,
         _ => Color::Green,
     };
@@ -221,12 +292,13 @@ fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Draw block height sparkline
 fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App) {
-    let data = app.history.block_height.as_slice();
+    let node = app.current_node();
+    let data = node.history.block_height.as_slice();
 
     // Normalize data for display (show relative changes)
     let normalized: Vec<u64> = if let (Some(min), Some(max)) = (
-        app.history.block_height.min(),
-        app.history.block_height.max(),
+        node.history.block_height.min(),
+        node.history.block_height.max(),
     ) {
         let range = (max - min).max(1.0);
         data.iter()
@@ -236,7 +308,7 @@ fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App) {
         data
     };
 
-    let title = if let Some(bpm) = app.blocks_per_minute() {
+    let title = if let Some(bpm) = node.blocks_per_minute() {
         format!(" Blocks ({:.1}/min) ", bpm)
     } else {
         " Blocks ".to_string()
@@ -266,8 +338,9 @@ fn draw_resource_panel(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Draw resource/system metrics
 fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
-    let metrics = &app.metrics;
-    let memory_health = app.memory_health();
+    let node = app.current_node();
+    let metrics = &node.metrics;
+    let memory_health = node.memory_health();
 
     let rows = vec![
         Row::new(vec![
@@ -309,12 +382,14 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Draw memory usage sparkline
 fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App) {
-    let data = app.history.memory_used.as_slice();
+    let node = app.current_node();
+    let data = node.history.memory_used.as_slice();
 
     // Normalize to show relative changes
-    let normalized: Vec<u64> = if let (Some(min), Some(max)) =
-        (app.history.memory_used.min(), app.history.memory_used.max())
-    {
+    let normalized: Vec<u64> = if let (Some(min), Some(max)) = (
+        node.history.memory_used.min(),
+        node.history.memory_used.max(),
+    ) {
         let range = (max - min).max(1.0);
         data.iter()
             .map(|v| ((*v as f64 - min) / range * 100.0) as u64)
@@ -326,31 +401,43 @@ fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App) {
     let sparkline = Sparkline::default()
         .block(Block::default().borders(Borders::ALL).title(" Memory "))
         .data(&normalized)
-        .style(Style::default().fg(health_to_color(app.memory_health())));
+        .style(Style::default().fg(health_to_color(node.memory_health())));
 
     frame.render_widget(sparkline, area);
 }
 
 /// Draw the footer with help and status
 fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
-    let endpoint = format!("{}:{}", app.config.prom_host, app.config.prom_port);
+    let node = app.current_node();
+    let endpoint = format!("{}:{}", node.config.prom_host, node.config.prom_port);
 
-    let footer_text = if let Some(ref error) = app.last_error {
+    let footer_text = if let Some(ref error) = node.last_error {
         Line::from(vec![
             Span::styled(" Error: ", Style::default().fg(Color::Red).bold()),
             Span::styled(truncate_string(error, 60), Style::default().fg(Color::Red)),
         ])
     } else {
-        Line::from(vec![
+        let mut spans = vec![
             Span::styled(" [q] ", Style::default().fg(Color::Yellow)),
             Span::raw("Quit  "),
             Span::styled("[r] ", Style::default().fg(Color::Yellow)),
             Span::raw("Refresh  "),
             Span::styled("[?] ", Style::default().fg(Color::Yellow)),
             Span::raw("Help  "),
-            Span::raw("│ "),
-            Span::styled(endpoint, Style::default().fg(Color::DarkGray)),
-        ])
+        ];
+
+        // Add node switching hints if multi-node
+        if app.is_multi_node() {
+            spans.push(Span::styled("[Tab] ", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw("Next  "));
+            spans.push(Span::styled("[1-9] ", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw("Select  "));
+        }
+
+        spans.push(Span::raw("│ "));
+        spans.push(Span::styled(endpoint, Style::default().fg(Color::DarkGray)));
+
+        Line::from(spans)
     };
 
     let footer = Paragraph::new(footer_text).block(Block::default().borders(Borders::ALL));
@@ -359,13 +446,13 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw the help popup overlay
-fn draw_help_popup(frame: &mut Frame, area: Rect) {
-    let popup_area = centered_rect(60, 50, area);
+fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
+    let popup_area = centered_rect(60, if is_multi_node { 60 } else { 50 }, area);
 
     // Clear the background
     frame.render_widget(Clear, popup_area);
 
-    let help_text = vec![
+    let mut help_lines = vec![
         Line::from(Span::styled(
             "Keyboard Shortcuts",
             Style::default().bold().underlined(),
@@ -383,6 +470,25 @@ fn draw_help_popup(frame: &mut Frame, area: Rect) {
             Span::styled("  ?         ", Style::default().fg(Color::Yellow)),
             Span::raw("Toggle this help"),
         ]),
+    ];
+
+    // Add multi-node shortcuts if applicable
+    if is_multi_node {
+        help_lines.push(Line::from(vec![
+            Span::styled("  Tab       ", Style::default().fg(Color::Yellow)),
+            Span::raw("Switch to next node"),
+        ]));
+        help_lines.push(Line::from(vec![
+            Span::styled("  Shift+Tab ", Style::default().fg(Color::Yellow)),
+            Span::raw("Switch to previous node"),
+        ]));
+        help_lines.push(Line::from(vec![
+            Span::styled("  1-9       ", Style::default().fg(Color::Yellow)),
+            Span::raw("Select node by number"),
+        ]));
+    }
+
+    help_lines.extend(vec![
         Line::from(""),
         Line::from(Span::styled(
             "Health Indicators",
@@ -406,9 +512,9 @@ fn draw_help_popup(frame: &mut Frame, area: Rect) {
             "Press any key to close",
             Style::default().fg(Color::DarkGray).italic(),
         )),
-    ];
+    ]);
 
-    let help = Paragraph::new(help_text)
+    let help = Paragraph::new(help_lines)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -458,7 +564,6 @@ fn format_metric_u64(value: Option<u64>) -> String {
 }
 
 fn format_number(n: u64) -> String {
-    // Add thousand separators
     let s = n.to_string();
     let mut result = String::new();
     for (i, c) in s.chars().rev().enumerate() {
@@ -530,7 +635,6 @@ fn format_uptime(seconds: Option<f64>) -> String {
 fn format_kes_remaining(periods: Option<u64>) -> String {
     match periods {
         Some(p) => {
-            // Each KES period is ~1.5 days on mainnet (129600 slots at 1 slot/sec)
             let days_approx = (p as f64 * 1.5) as u64;
             format!("{} (~{}d)", p, days_approx)
         }

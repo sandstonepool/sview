@@ -2,6 +2,8 @@
 //!
 //! This application connects to a Cardano node's Prometheus metrics endpoint
 //! and displays real-time status information in a terminal user interface.
+//!
+//! Supports monitoring multiple nodes via config file (~/.config/sview/config.toml).
 
 mod app;
 mod config;
@@ -11,7 +13,7 @@ mod ui;
 
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -20,12 +22,12 @@ use std::io;
 use std::time::Duration;
 
 use app::{App, AppMode};
-use config::Config;
+use config::AppConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load configuration from CLI arguments and environment variables
-    let config = Config::load();
+    // Load configuration from CLI, environment, and config file
+    let app_config = AppConfig::load();
 
     // Setup terminal
     enable_raw_mode()?;
@@ -35,7 +37,7 @@ async fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Create app state and run
-    let mut app = App::new(config);
+    let mut app = App::new(app_config);
     let result = run_app(&mut terminal, &mut app).await;
 
     // Restore terminal
@@ -55,8 +57,8 @@ async fn main() -> Result<()> {
 }
 
 async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
-    // Initial metrics fetch
-    app.fetch_metrics().await;
+    // Initial metrics fetch for all nodes
+    app.fetch_all_metrics().await;
 
     loop {
         // Draw UI
@@ -74,8 +76,34 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
 
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
-                        KeyCode::Char('r') => app.fetch_metrics().await,
+                        KeyCode::Char('r') => app.fetch_all_metrics().await,
                         KeyCode::Char('?') => app.toggle_help(),
+                        
+                        // Node switching
+                        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                            app.prev_node();
+                        }
+                        KeyCode::Tab => {
+                            app.next_node();
+                        }
+                        KeyCode::BackTab => {
+                            app.prev_node();
+                        }
+                        
+                        // Number keys to select nodes directly (1-9)
+                        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+                            let index = (c as usize) - ('1' as usize);
+                            app.select_node(index);
+                        }
+                        
+                        // Left/Right arrow keys for node switching
+                        KeyCode::Left => {
+                            app.prev_node();
+                        }
+                        KeyCode::Right => {
+                            app.next_node();
+                        }
+                        
                         _ => {}
                     }
                 }
