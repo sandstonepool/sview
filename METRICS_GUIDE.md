@@ -58,14 +58,19 @@ Available on nodes with P2P enabled:
 
 ```
 cardano_node_metrics_p2p_enabled_int
-cardano_node_metrics_p2p_incomingConns_int
-cardano_node_metrics_p2p_outgoingConns_int
 cardano_node_metrics_p2p_coldPeersCount_int
 cardano_node_metrics_p2p_warmPeersCount_int
 cardano_node_metrics_p2p_hotPeersCount_int
-cardano_node_metrics_p2p_unidirectionalPeersCount_int
-cardano_node_metrics_p2p_bidirectionalPeersCount_int
-cardano_node_metrics_p2p_fullDuplexPeersCount_int
+```
+
+### Connection Manager Metrics
+For detailed connection type information:
+
+```
+cardano_node_metrics_connectionManager_incomingConns      # Incoming connections
+cardano_node_metrics_connectionManager_outgoingConns      # Outgoing connections
+cardano_node_metrics_connectionManager_duplexConns        # Bidirectional connections
+cardano_node_metrics_connectionManager_unidirectionalConns # Unidirectional connections
 ```
 
 ## Debugging Missing Metrics
@@ -213,9 +218,14 @@ To report missing metrics or get help:
 
 The following metrics are **not exposed** by any real Cardano node and have been removed from sview:
 
-- `cardano_node_metrics_ChainSync_progress` — Non-existent metric
-- `cardano_node_metrics_connectedPeers_int` — Use peer state sums instead
-- `cardano_node_metrics_connectionManager_prunableConns` — Non-existent metric
+- `cardano_node_metrics_ChainSync_progress` — Non-existent sync metric
+- `cardano_node_metrics_connectedPeers_int` — Calculated from peer states instead
+- `cardano_node_metrics_connectionManager_prunableConns` — Non-existent connection metric
+- `cardano_node_metrics_p2p_incomingConns_int` — Use connectionManager metrics instead
+- `cardano_node_metrics_p2p_outgoingConns_int` — Use connectionManager metrics instead
+- `cardano_node_metrics_p2p_unidirectionalPeersCount_int` — Non-existent peer metric
+- `cardano_node_metrics_p2p_bidirectionalPeersCount_int` — Non-existent peer metric
+- `cardano_node_metrics_p2p_fullDuplexPeersCount_int` — Non-existent peer metric
 
 ## Summary
 
