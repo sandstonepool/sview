@@ -5,6 +5,7 @@
 //!
 //! Supports monitoring multiple nodes via config file (~/.config/sview/config.toml).
 
+mod alerts;
 mod app;
 mod config;
 mod history;
