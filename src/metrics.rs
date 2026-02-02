@@ -117,6 +117,12 @@ pub struct NodeMetrics {
     pub about_to_lead: Option<u64>,
     /// Missed slots
     pub missed_slots: Option<u64>,
+    /// Operational certificate counter (on disk)
+    pub op_cert_counter_disk: Option<u64>,
+    /// Operational certificate counter (on chain)
+    pub op_cert_counter_chain: Option<u64>,
+    /// Operational certificate start KES period
+    pub op_cert_start_kes_period: Option<u64>,
     /// P2P (peer-to-peer) network statistics
     pub p2p: P2PStats,
     /// Node start time (unix timestamp)
@@ -392,6 +398,18 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     if metrics.is_leader.is_none() {
                         metrics.is_leader = Some(value > 0.0);
                     }
+                }
+
+                // Operational certificate metrics
+                "cardano_node_metrics_operationalCertificateStartKESPeriod_int" => {
+                    metrics.op_cert_start_kes_period = Some(value as u64);
+                }
+                // These may come from extended metrics or external tooling
+                "cardano_node_metrics_opCertCounterOnDisk_int" => {
+                    metrics.op_cert_counter_disk = Some(value as u64);
+                }
+                "cardano_node_metrics_opCertCounterOnChain_int" => {
+                    metrics.op_cert_counter_chain = Some(value as u64);
                 }
 
                 _ => {}

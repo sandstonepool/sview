@@ -410,6 +410,30 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palett
         ));
     }
 
+    // Add OpCert validation if available (block producer)
+    if let (Some(disk), Some(chain)) = (metrics.op_cert_counter_disk, metrics.op_cert_counter_chain)
+    {
+        let (op_cert_status, op_cert_health) = if disk == chain {
+            (format!("✓ {} (valid)", disk), HealthStatus::Good)
+        } else if disk > chain {
+            (
+                format!("⚠ disk:{} chain:{}", disk, chain),
+                HealthStatus::Warning,
+            )
+        } else {
+            (
+                format!("✗ disk:{} < chain:{}", disk, chain),
+                HealthStatus::Critical,
+            )
+        };
+        rows.push(create_health_row(
+            "OpCert",
+            op_cert_status,
+            op_cert_health,
+            palette,
+        ));
+    }
+
     // Add forging metrics if available
     if metrics.forging_enabled.is_some() {
         let forging_str = if metrics.forging_enabled.unwrap_or(false) {
@@ -485,19 +509,14 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
             palette,
         ),
         create_separator_row(palette),
+        // Peer distribution bar showing hot/warm/cold ratio
         create_metric_row(
-            "Hot Peers",
-            format_metric_u64(metrics.p2p.hot_peers),
-            palette,
-        ),
-        create_metric_row(
-            "Warm Peers",
-            format_metric_u64(metrics.p2p.warm_peers),
-            palette,
-        ),
-        create_metric_row(
-            "Cold Peers",
-            format_metric_u64(metrics.p2p.cold_peers),
+            "Peer Dist",
+            format_peer_distribution(
+                metrics.p2p.hot_peers,
+                metrics.p2p.warm_peers,
+                metrics.p2p.cold_peers,
+            ),
             palette,
         ),
         create_separator_row(palette),
@@ -509,6 +528,23 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
         create_metric_row(
             "Blocks Served",
             format_metric_u64(metrics.blocks_served),
+            palette,
+        ),
+        create_separator_row(palette),
+        // Block propagation CDF (percentage of blocks received within time threshold)
+        create_metric_row(
+            "Prop ≤1s",
+            format_cdf_percent(metrics.block_delay_cdf_1s),
+            palette,
+        ),
+        create_metric_row(
+            "Prop ≤3s",
+            format_cdf_percent(metrics.block_delay_cdf_3s),
+            palette,
+        ),
+        create_metric_row(
+            "Prop ≤5s",
+            format_cdf_percent(metrics.block_delay_cdf_5s),
             palette,
         ),
     ];
@@ -1023,4 +1059,38 @@ fn format_block_delay(secs: Option<f64>) -> String {
         Some(s) => format!("{:.2}s", s),
         None => "—".to_string(),
     }
+}
+
+/// Format CDF (cumulative distribution function) value as percentage
+/// The CDF value represents the fraction of blocks received within the threshold
+fn format_cdf_percent(cdf: Option<f64>) -> String {
+    match cdf {
+        Some(c) if (0.0..=1.0).contains(&c) => format!("{:.1}%", c * 100.0),
+        Some(c) if c > 1.0 => format!("{:.1}%", c), // Already a percentage
+        _ => "—".to_string(),
+    }
+}
+
+/// Format peer distribution as a compact visual bar
+/// Shows hot/warm/cold distribution: [████▒▒░░░░] H:5 W:3 C:10
+fn format_peer_distribution(hot: Option<u64>, warm: Option<u64>, cold: Option<u64>) -> String {
+    let h = hot.unwrap_or(0);
+    let w = warm.unwrap_or(0);
+    let c = cold.unwrap_or(0);
+    let total = h + w + c;
+
+    if total == 0 {
+        return "—".to_string();
+    }
+
+    // Scale to 10 characters max
+    let bar_width: usize = 10;
+    let hot_chars = ((h as f64 / total as f64) * bar_width as f64).round() as usize;
+    let warm_chars = ((w as f64 / total as f64) * bar_width as f64).round() as usize;
+    let cold_chars = bar_width.saturating_sub(hot_chars + warm_chars);
+
+    // Use block characters: █ (hot), ▒ (warm), ░ (cold)
+    let bar: String = "█".repeat(hot_chars) + &"▒".repeat(warm_chars) + &"░".repeat(cold_chars);
+
+    format!("[{}] H:{} W:{} C:{}", bar, h, w, c)
 }

@@ -8,6 +8,7 @@
 mod alerts;
 mod app;
 mod config;
+mod geoip;
 mod history;
 mod metrics;
 mod peers;
