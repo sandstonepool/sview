@@ -128,6 +128,7 @@ impl NodeState {
     }
 
     /// Get the storage manager for this node
+    #[allow(dead_code)]
     pub fn storage(&self) -> &StorageManager {
         &self.storage
     }

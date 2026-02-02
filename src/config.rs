@@ -365,13 +365,13 @@ mod tests {
 network = "preprod"
 refresh_interval_secs = 5
 
-[[node]]
+[[nodes]]
 name = "Relay 1"
 host = "10.0.0.1"
 port = 12798
 role = "relay"
 
-[[node]]
+[[nodes]]
 name = "Block Producer"
 host = "10.0.0.2"
 port = 12798
@@ -388,7 +388,7 @@ role = "bp"
     #[test]
     fn test_node_role_aliases() {
         let toml = r#"
-[[node]]
+[[nodes]]
 name = "BP"
 role = "block-producer"
 "#;

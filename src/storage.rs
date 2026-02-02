@@ -17,7 +17,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Default retention period in days
 const DEFAULT_RETENTION_DAYS: u64 = 30;
@@ -226,12 +226,9 @@ impl StorageManager {
             if file_path.exists() {
                 match self.load_daily_file(&file_path) {
                     Ok(daily) => {
+                        let count = daily.snapshots.len();
                         all_snapshots.extend(daily.snapshots);
-                        debug!(
-                            "Loaded {} snapshots from {:?}",
-                            daily.snapshots.len(),
-                            file_path
-                        );
+                        debug!("Loaded {} snapshots from {:?}", count, file_path);
                     }
                     Err(e) => {
                         warn!("Failed to load {:?}: {}", file_path, e);
@@ -243,10 +240,8 @@ impl StorageManager {
         // Sort by timestamp (oldest first) and limit
         all_snapshots.sort_by_key(|s| s.timestamp);
         if all_snapshots.len() > max_samples {
-            all_snapshots = all_snapshots
-                .into_iter()
-                .skip(all_snapshots.len() - max_samples)
-                .collect();
+            let skip_count = all_snapshots.len() - max_samples;
+            all_snapshots = all_snapshots.into_iter().skip(skip_count).collect();
         }
 
         info!(
