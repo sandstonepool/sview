@@ -137,8 +137,6 @@ pub struct NodeMetrics {
     pub full_duplex_connections: Option<u64>,
     /// Unidirectional connections
     pub unidirectional_connections: Option<u64>,
-    /// Prunable connections
-    pub prunable_connections: Option<u64>,
 }
 
 /// Metrics client for fetching Prometheus data
@@ -305,9 +303,6 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
                 "cardano_node_metrics_connectionManager_unidirectionalConns" => {
                     metrics.unidirectional_connections = Some(value as u64);
-                }
-                "cardano_node_metrics_connectionManager_prunableConns" => {
-                    metrics.prunable_connections = Some(value as u64);
                 }
                 // Legacy fullDuplexConns name for compatibility
                 "cardano_node_metrics_connectionManager_fullDuplexConns" => {

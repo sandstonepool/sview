@@ -414,10 +414,6 @@ fn draw_connection_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &P
             Cell::from(format_metric_u64(metrics.unidirectional_connections)),
         ]),
         Row::new(vec![
-            Cell::from("Prunable"),
-            Cell::from(format_metric_u64(metrics.prunable_connections)),
-        ]),
-        Row::new(vec![
             Cell::from("Block Delay"),
             Cell::from(format_block_delay(metrics.block_delay_s)),
         ]),
