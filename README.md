@@ -35,6 +35,7 @@ experience.
 - 📊 Real-time node metrics display with trend indicators (↑↓→)
 - 📡 Block propagation stats (CDF: % of blocks within 1s/3s/5s)
 - 🔑 OpCert validation for block producers (disk vs chain counter check)
+- 🌐 Detailed peer list view with IP, RTT, direction, and connection state
 - 🔍 Auto-detection of node type (cardano-node, Dingo, Amaru)
 - 🚦 Color-coded health indicators (sync status, peer count, memory)
 - 📅 Epoch progress bar with time remaining countdown
@@ -125,6 +126,7 @@ Use `Tab` or number keys `1-9` to switch between nodes.
 | `r` | Force refresh metrics |
 | `?` | Toggle help |
 | `t` | Cycle color theme |
+| `p` | Show peer connections |
 | `Tab` | Next node (multi-node mode) |
 | `Shift+Tab` | Previous node (multi-node mode) |
 | `1-9` | Select node by number (multi-node mode) |
