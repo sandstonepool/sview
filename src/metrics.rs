@@ -453,6 +453,47 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         }
     }
 
+    // Calculate sync progress from slot number
+    // Sync progress = (current_slot / expected_slot) * 100
+    // Expected slot is calculated from time since network genesis
+    if let Some(slot_num) = metrics.slot_num {
+        let now = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            Ok(dur) => dur.as_secs(),
+            Err(_) => 0,
+        };
+
+        if now > 0 {
+            // Mainnet Byron genesis: 1506203091 (2017-09-23 21:44:51 UTC)
+            // Slot length: 1 second (post-Shelley)
+            // This is a simplified calculation - real sync depends on network params
+            const MAINNET_GENESIS: u64 = 1506203091;
+            const SHELLEY_TRANSITION_SLOT: u64 = 4492800; // Approximate slot at Shelley transition
+            const SHELLEY_TRANSITION_TIME: u64 = 1596059091; // Byron slots were 20s, Shelley is 1s
+
+            // Calculate expected slot
+            let expected_slot = if now > SHELLEY_TRANSITION_TIME {
+                // Post-Shelley: 1 slot per second
+                let time_since_shelley = now - SHELLEY_TRANSITION_TIME;
+                SHELLEY_TRANSITION_SLOT + time_since_shelley
+            } else {
+                // Byron era: 1 slot per 20 seconds
+                (now - MAINNET_GENESIS) / 20
+            };
+
+            if expected_slot > 0 {
+                let sync = (slot_num as f64 / expected_slot as f64) * 100.0;
+                // Cap at 100% and ensure non-negative
+                metrics.sync_progress = Some(sync.clamp(0.0, 100.0));
+                debug!(
+                    "Calculated sync_progress: slot {} / expected {} = {:.2}%",
+                    slot_num,
+                    expected_slot,
+                    metrics.sync_progress.unwrap_or(0.0)
+                );
+            }
+        }
+    }
+
     // Log available metrics if in debug mode
     let available_metrics: Vec<&str> = metrics
         .raw
