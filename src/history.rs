@@ -32,6 +32,7 @@ impl MetricHistory {
     }
 
     /// Get the values as a slice for sparkline rendering
+    #[allow(dead_code)]
     pub fn as_slice(&self) -> Vec<u64> {
         self.values.iter().map(|v| *v as u64).collect()
     }
@@ -43,11 +44,13 @@ impl MetricHistory {
     }
 
     /// Get the minimum value in the history
+    #[allow(dead_code)]
     pub fn min(&self) -> Option<f64> {
         self.values.iter().copied().reduce(f64::min)
     }
 
     /// Get the maximum value in the history
+    #[allow(dead_code)]
     pub fn max(&self) -> Option<f64> {
         self.values.iter().copied().reduce(f64::max)
     }
@@ -63,6 +66,7 @@ impl MetricHistory {
     }
 
     /// Get the trend (difference between current and oldest)
+    #[allow(dead_code)]
     pub fn trend(&self) -> Option<f64> {
         if self.values.len() < 2 {
             return None;

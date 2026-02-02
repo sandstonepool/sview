@@ -182,11 +182,14 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         // Parse metric line: metric_name{labels} value
         if let Some((name, value)) = parse_metric_line(line) {
             metrics.raw.insert(name.clone(), value);
-            
+
             // Log interesting metrics for debugging
-            if name.contains("Uptime") || name.contains("upTime") || 
-               name.contains("cpu") || name.contains("Mempool") || 
-               name.contains("Txs") {
+            if name.contains("Uptime")
+                || name.contains("upTime")
+                || name.contains("cpu")
+                || name.contains("Mempool")
+                || name.contains("Txs")
+            {
                 debug!("Found metric: {} = {}", name, value);
             }
 
@@ -246,7 +249,7 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "rts_gc_cpu_ms" => {
                     metrics.cpu_ms = Some(value as u64);
                 }
-                "cardano_node_metrics_RTS_cpuNs_int" 
+                "cardano_node_metrics_RTS_cpuNs_int"
                 | "cardano_node_metrics_RTS_cpu_ns"
                 | "cardano_node_metrics_RTS_cpuNs" => {
                     // Convert nanoseconds to milliseconds
@@ -290,8 +293,7 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "cardano_node_metrics_nodeStartTime_int" => {
                     metrics.node_start_time = Some(value as u64);
                 }
-                "cardano_node_metrics_upTime_ns" 
-                | "cardano_node_metrics_Stat_startTime" => {
+                "cardano_node_metrics_upTime_ns" | "cardano_node_metrics_Stat_startTime" => {
                     // Convert nanoseconds to seconds
                     metrics.uptime_seconds = Some(value / 1_000_000_000.0);
                 }
@@ -402,13 +404,11 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
 
     // Calculate uptime from nodeStartTime if available
     if let Some(start_time) = metrics.node_start_time {
-        let now = match std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-        {
+        let now = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => dur.as_secs(),
             Err(_) => {
                 debug!("System clock error during uptime calculation, skipping");
-                0  // Skip uptime calculation on clock error
+                0 // Skip uptime calculation on clock error
             }
         };
         if now >= start_time {
@@ -421,13 +421,18 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         .raw
         .keys()
         .filter(|k| {
-            k.contains("Uptime") || k.contains("upTime") || k.contains("cpu") || 
-            k.contains("Mempool") || k.contains("memory") || k.contains("Memory") ||
-            k.contains("connection") || k.contains("Connection")
+            k.contains("Uptime")
+                || k.contains("upTime")
+                || k.contains("cpu")
+                || k.contains("Mempool")
+                || k.contains("memory")
+                || k.contains("Memory")
+                || k.contains("connection")
+                || k.contains("Connection")
         })
         .map(|s| s.as_str())
         .collect();
-    
+
     if !available_metrics.is_empty() {
         debug!("Available resource metrics: {:?}", available_metrics);
     }

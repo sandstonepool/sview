@@ -253,11 +253,7 @@ impl AlertManager {
 
         // Log to file
         if let Some(ref log_path) = self.log_file {
-            if let Ok(mut file) = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(log_path)
-            {
+            if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
                 let _ = writeln!(file, "{}", alert.log_format());
             }
         }
@@ -280,9 +276,10 @@ impl AlertManager {
 #[allow(dead_code)]
 fn get_alerts_log_path(node_name: &str) -> Option<PathBuf> {
     dirs::data_dir().map(|p| {
-        p.join("sview")
-            .join("alerts")
-            .join(format!("{}.log", node_name.replace(" ", "_").to_lowercase()))
+        p.join("sview").join("alerts").join(format!(
+            "{}.log",
+            node_name.replace(" ", "_").to_lowercase()
+        ))
     })
 }
 
@@ -347,7 +344,10 @@ mod tests {
 
         manager.check_kes_expiry(Some(3));
         assert!(manager.latest_critical().is_some());
-        assert_eq!(manager.latest_critical().unwrap().severity, AlertSeverity::Critical);
+        assert_eq!(
+            manager.latest_critical().unwrap().severity,
+            AlertSeverity::Critical
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 [package]
 name = "sview"
-version = "0.1.21"
+version = "0.1.22"
 edition = "2021"
 description = "A TUI for monitoring Cardano nodes, written in Rust"
 license = "Apache-2.0"

@@ -17,7 +17,9 @@ mod ui;
 
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -95,7 +97,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         KeyCode::Char('r') => app.fetch_all_metrics().await,
                         KeyCode::Char('?') => app.toggle_help(),
                         KeyCode::Char('t') => app.cycle_theme(),
-                        
+
                         // Node switching
                         KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                             app.prev_node();
@@ -106,13 +108,13 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         KeyCode::BackTab => {
                             app.prev_node();
                         }
-                        
+
                         // Number keys to select nodes directly (1-9)
                         KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
                             let index = (c as usize) - ('1' as usize);
                             app.select_node(index);
                         }
-                        
+
                         // Left/Right arrow keys for node switching
                         KeyCode::Left => {
                             app.prev_node();
@@ -120,7 +122,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         KeyCode::Right => {
                             app.next_node();
                         }
-                        
+
                         _ => {}
                     }
                 }
@@ -155,7 +157,10 @@ fn export_metrics(app_config: &AppConfig, export_path: &std::path::Path) -> Resu
                 .unwrap_or("csv");
             let sanitized_name = node.name.replace(' ', "_").to_lowercase();
             let new_name = format!("{}_{}.{}", stem, sanitized_name, ext);
-            export_path.parent().map(|p| p.join(&new_name)).unwrap_or_else(|| PathBuf::from(&new_name))
+            export_path
+                .parent()
+                .map(|p| p.join(&new_name))
+                .unwrap_or_else(|| PathBuf::from(&new_name))
         } else {
             export_path.to_path_buf()
         };

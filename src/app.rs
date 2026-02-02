@@ -76,13 +76,19 @@ impl NodeState {
                 );
             }
             Err(e) => {
-                debug!("No historical data loaded for '{}': {}", config.node_name, e);
+                debug!(
+                    "No historical data loaded for '{}': {}",
+                    config.node_name, e
+                );
             }
         }
 
         // Run periodic cleanup of old data
         if let Err(e) = storage.cleanup_old_data() {
-            warn!("Failed to cleanup old data for '{}': {}", config.node_name, e);
+            warn!(
+                "Failed to cleanup old data for '{}': {}",
+                config.node_name, e
+            );
         }
 
         Self {
@@ -120,7 +126,7 @@ impl NodeState {
 
                 self.metrics = metrics.clone();
                 self.history.update(&self.metrics);
-                
+
                 // Update peer monitor with current peer statistics
                 self.peer_monitor.update_from_metrics(
                     self.metrics.p2p.hot_peers,
@@ -130,7 +136,7 @@ impl NodeState {
                     self.metrics.outgoing_connections,
                     self.metrics.full_duplex_connections,
                 );
-                
+
                 self.last_error = None;
                 self.fetch_count += 1;
                 self.last_fetch_time = Some(Instant::now());
@@ -238,6 +244,7 @@ impl NodeState {
     }
 
     /// Get blocks per minute from history
+    #[allow(dead_code)]
     pub fn blocks_per_minute(&self) -> Option<f64> {
         let trend = self.history.block_height.trend()?;
         let samples = self.history.block_height.len();
@@ -383,5 +390,4 @@ impl App {
     pub fn cycle_theme(&mut self) {
         self.theme = self.theme.next();
     }
-
 }

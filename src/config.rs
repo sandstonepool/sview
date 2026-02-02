@@ -258,13 +258,13 @@ impl AppConfig {
                         .unwrap_or_else(|| file_config.global.network.clone()),
                 })
                 .collect();
-            
+
             if configured_nodes.is_empty() {
                 eprintln!("Error: Configuration has no nodes defined");
                 eprintln!("Please add at least one [[nodes]] section to your config file");
                 std::process::exit(1);
             }
-            
+
             configured_nodes
         };
 

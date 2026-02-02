@@ -187,12 +187,16 @@ impl PeerStats {
         if total_reachable > 0.0 {
             for (bucket, count) in &stats.peers_by_latency {
                 if *bucket != LatencyBucket::Unreachable {
-                    stats.latency_percentages.insert(*bucket, (*count as f32) / total_reachable * 100.0);
+                    stats
+                        .latency_percentages
+                        .insert(*bucket, (*count as f32) / total_reachable * 100.0);
                 }
             }
             stats.latency_percentages.insert(
                 LatencyBucket::Unreachable,
-                (stats.unreachable_count as f32) / (stats.reachable_count as f32 + stats.unreachable_count as f32) * 100.0,
+                (stats.unreachable_count as f32)
+                    / (stats.reachable_count as f32 + stats.unreachable_count as f32)
+                    * 100.0,
             );
         }
 
@@ -376,15 +380,27 @@ mod tests {
 
         assert_eq!(monitor.count(), 35);
         assert_eq!(
-            monitor.stats().peers_by_state.get(&PeerState::Hot).unwrap_or(&0),
+            monitor
+                .stats()
+                .peers_by_state
+                .get(&PeerState::Hot)
+                .unwrap_or(&0),
             &5
         );
         assert_eq!(
-            monitor.stats().peers_by_state.get(&PeerState::Warm).unwrap_or(&0),
+            monitor
+                .stats()
+                .peers_by_state
+                .get(&PeerState::Warm)
+                .unwrap_or(&0),
             &10
         );
         assert_eq!(
-            monitor.stats().peers_by_state.get(&PeerState::Cold).unwrap_or(&0),
+            monitor
+                .stats()
+                .peers_by_state
+                .get(&PeerState::Cold)
+                .unwrap_or(&0),
             &20
         );
     }
