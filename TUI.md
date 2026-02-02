@@ -34,10 +34,12 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 │ [●] Cardano Node [BP] Connected │ Network: mainnet │ Node: cardano  │
 │                                 │ Theme: Dark Default              │
 ├─────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────── EPOCH PROGRESS ──────────┐ │
-│ │ ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ │
-│ │ 78.2% — 2d 4h 23m remaining                                      │ │
-│ └────────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────── EPOCH PROGRESS ────────────────┐ ┌──┐ │
+│ │ ███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │ │ 7│ │
+│ │ 78.2% — 2d 4h 23m remaining                                │ │.5│ │
+│ │                                                             │ │GB│ │
+│ │ Memory Heap: 12.1 GB ─────────────────────────────────── │ │  │ │
+│ └──────────────────────────────────────────────────────────┘ └──┘ │
 │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
 │  │  CHAIN METRICS   │  │ NETWORK & PEERS  │  │   RESOURCES      │
@@ -59,12 +61,6 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 │  │                  │  │  └─ Unidirect:42 │  │                  │
 │  │                  │  │                  │  │                  │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘
-│
-│  ┌─────────────────────────────┬─────────────────────────────────┐
-│  │    BLOCK HEIGHT SPARKLINE   │   MEMORY USAGE SPARKLINE       │
-│  │ ▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇ │ ▂▃▃▃▂▁▂▃▂▃▃▃▂▁▂▃▂▃▃▃▂▃▂▃▄▅█ │
-│  │ Blocks (0.15/min)           │ Trend → (within safe range)    │
-│  └─────────────────────────────┴─────────────────────────────────┘
 │
 ├─────────────────────────────────────────────────────────────────────┤
 │ [q]uit [r]efresh [t]heme [?]help [Tab]node [1-9]select│ 10.0.0.1:12798
@@ -236,7 +232,7 @@ Specific applications:
 - **Text:** Theme text color (white/black per mode)
 - **Muted text:** Theme text_muted color (gray)
 - **Accents:** Theme primary/secondary/tertiary colors
-- **Sparklines:** Theme sparkline color (usually primary)
+- **Gauges:** Health colors for memory/epoch progress (green/yellow/red)
 
 ---
 
@@ -330,9 +326,9 @@ Specific applications:
 - Mempool metrics
 - Forging stats (BP only)
 
-**Trends (Bottom):**
-- Block height sparkline (are blocks coming in?)
-- Memory usage sparkline (is usage stable?)
+**Gauges (Top):**
+- Epoch progress gauge (how much of current epoch remains?)
+- Memory usage gauge (heap pressure indicator?)
 
 ---
 
@@ -366,12 +362,12 @@ Specific applications:
 - **Scalability:** Fits 80+ column terminals
 - **Multi-node:** Can swap nodes without layout change
 
-### Why Sparklines at Bottom?
-- **Secondary importance:** Trends, not absolute values
-- **Consistent height:** Both sparklines exactly 5 lines
-- **50/50 split:** Block and Memory are equally important
-- **Space efficiency:** Takes minimal vertical space
-- **Fast updates:** Easy to see changes as data streams in
+### Why Memory Gauge with Epoch Progress?
+- **Real-time overview:** Both critical gauges visible together
+- **Responsive design:** Side-by-side takes ~3 lines, leaves more space for metrics
+- **Memory health:** Visual indicator of heap pressure
+- **Epoch awareness:** Know exactly when epoch ends
+- **Practical layout:** More metrics displayed, better use of terminal real estate
 
 ### Why Health Coloring?
 - **Quick scanning:** Red jumps out immediately
@@ -399,9 +395,9 @@ Specific applications:
 
 **Layout Adaptation:**
 - Metrics always 3 columns (no stacking at narrow widths)
-- Sparklines scale to available width (always 50/50 split)
+- Epoch & Memory gauges full-width (top section)
 - If terminal too narrow: Text truncates with `...`
-- If terminal too short: May need scroll (not currently implemented)
+- If terminal too short: Metrics may be truncated (full scroll not yet implemented)
 
 ---
 
@@ -516,5 +512,5 @@ When making TUI changes:
 ---
 
 **Document maintained by:** Claw Daddy (@clawd)  
-**Last reviewed:** 2026-02-02  
-**Status:** 🟢 Current and accurate
+**Last reviewed:** 2026-02-02 (synced with v0.1.21 implementation)  
+**Status:** 🟢 Current and accurate (all diagrams & references updated)
