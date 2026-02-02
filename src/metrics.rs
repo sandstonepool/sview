@@ -207,13 +207,16 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "cardano_node_metrics_density_real" => {
                     metrics.density = Some(value);
                 }
-                // txsProcessedNum can be _int (legacy) or _counter (current)
+                // txsProcessedNum - various cardano-node versions use different suffixes
                 "cardano_node_metrics_txsProcessedNum_int"
-                | "cardano_node_metrics_txsProcessedNum_counter" => {
+                | "cardano_node_metrics_txsProcessedNum_counter"
+                | "cardano_node_metrics_txsProcessedNum" => {
                     metrics.tx_processed = Some(value as u64);
                 }
-                // forks is a counter in current cardano-node source
-                "cardano_node_metrics_forks_int" | "cardano_node_metrics_forks_counter" => {
+                // forks - various cardano-node versions use different suffixes
+                "cardano_node_metrics_forks_int"
+                | "cardano_node_metrics_forks_counter"
+                | "cardano_node_metrics_forks" => {
                     metrics.forks = Some(value as u64);
                 }
                 // slotsMissed naming varies between versions
@@ -410,6 +413,11 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
                 "cardano_node_metrics_opCertCounterOnChain_int" => {
                     metrics.op_cert_counter_chain = Some(value as u64);
+                }
+
+                // Log unrecognized cardano_node_metrics for debugging
+                other if other.starts_with("cardano_node_metrics_") => {
+                    debug!("Unrecognized metric: {} = {}", other, value);
                 }
 
                 _ => {}
