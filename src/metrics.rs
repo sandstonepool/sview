@@ -284,11 +284,6 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.block_delay_cdf_5s = Some(value);
                 }
 
-                // Sync progress (if available)
-                "cardano_node_metrics_ChainSync_progress" => {
-                    metrics.sync_progress = Some(value * 100.0);
-                }
-
                 // Uptime metrics
                 "cardano_node_metrics_nodeStartTime_int" => {
                     metrics.node_start_time = Some(value as u64);
