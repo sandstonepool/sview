@@ -52,7 +52,7 @@ impl std::fmt::Display for NodeType {
     }
 }
 
-/// Parsed metrics from a Cardano node
+/// Parsed metrics from a Cardano node (matches nview PromMetrics)
 #[derive(Debug, Clone, Default)]
 pub struct NodeMetrics {
     /// Detected node type
@@ -65,21 +65,42 @@ pub struct NodeMetrics {
     pub epoch: Option<u64>,
     /// Slot in epoch
     pub slot_in_epoch: Option<u64>,
-    /// Number of connected peers
-    pub peers_connected: Option<u64>,
-    /// Memory usage in bytes
-    pub memory_used: Option<u64>,
-    /// CPU usage in milliseconds
-    pub cpu_ms: Option<u64>,
-    /// Node uptime in seconds (calculated from nodeStartTime)
-    pub uptime_seconds: Option<f64>,
+    /// Chain density (real value, not percentage)
+    pub density: Option<f64>,
+    /// Transactions processed
+    pub tx_processed: Option<u64>,
     /// Transactions in mempool
     pub mempool_txs: Option<u64>,
     /// Mempool bytes
     pub mempool_bytes: Option<u64>,
-    /// Node version (if available)
-    #[allow(dead_code)]
-    pub version: Option<String>,
+    /// Number of connected peers
+    pub peers_connected: Option<u64>,
+    /// Memory live (GC live bytes)
+    pub memory_used: Option<u64>,
+    /// Memory heap bytes
+    pub memory_heap: Option<u64>,
+    /// GC minor collections
+    pub gc_minor: Option<u64>,
+    /// GC major collections
+    pub gc_major: Option<u64>,
+    /// Number of forks
+    pub forks: Option<u64>,
+    /// Block fetch delay in seconds
+    pub block_delay_s: Option<f64>,
+    /// Blocks served
+    pub blocks_served: Option<u64>,
+    /// Blocks received late
+    pub blocks_late: Option<u64>,
+    /// Block delay CDF at 1s
+    pub block_delay_cdf_1s: Option<f64>,
+    /// Block delay CDF at 3s
+    pub block_delay_cdf_3s: Option<f64>,
+    /// Block delay CDF at 5s
+    pub block_delay_cdf_5s: Option<f64>,
+    /// CPU usage in milliseconds (from GC)
+    pub cpu_ms: Option<u64>,
+    /// Node uptime in seconds (calculated from nodeStartTime)
+    pub uptime_seconds: Option<f64>,
     /// Sync progress percentage (0-100)
     pub sync_progress: Option<f64>,
     /// Whether we successfully connected to the node
@@ -93,6 +114,17 @@ pub struct NodeMetrics {
     pub kes_remaining: Option<u64>,
     /// KES periods per operational certificate
     pub kes_periods_per_cert: Option<u64>,
+    // Forging metrics (block producers)
+    /// Is node a leader
+    pub is_leader: Option<bool>,
+    /// Blocks adopted by the node
+    pub blocks_adopted: Option<u64>,
+    /// Blocks not adopted
+    pub blocks_didnt_adopt: Option<u64>,
+    /// About to lead slots
+    pub about_to_lead: Option<u64>,
+    /// Missed slots
+    pub missed_slots: Option<u64>,
     /// P2P (peer-to-peer) network statistics
     pub p2p: P2PStats,
     /// Node start time (unix timestamp)
@@ -101,10 +133,12 @@ pub struct NodeMetrics {
     pub incoming_connections: Option<u64>,
     /// Outgoing connections
     pub outgoing_connections: Option<u64>,
-    /// Full duplex connections
+    /// Full duplex connections (duplex conns from connectionManager)
     pub full_duplex_connections: Option<u64>,
     /// Unidirectional connections
     pub unidirectional_connections: Option<u64>,
+    /// Prunable connections
+    pub prunable_connections: Option<u64>,
 }
 
 /// Metrics client for fetching Prometheus data
@@ -156,7 +190,7 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 debug!("Found metric: {} = {}", name, value);
             }
 
-            // Map known metrics to structured fields
+            // Map known metrics to structured fields (matches nview PromMetrics names)
             match name.as_str() {
                 // Block/Chain metrics
                 "cardano_node_metrics_blockNum_int" => {
@@ -171,23 +205,42 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 "cardano_node_metrics_slotInEpoch_int" => {
                     metrics.slot_in_epoch = Some(value as u64);
                 }
+                "cardano_node_metrics_density_real" => {
+                    metrics.density = Some(value);
+                }
+                "cardano_node_metrics_txsProcessedNum_int" => {
+                    metrics.tx_processed = Some(value as u64);
+                }
+                "cardano_node_metrics_forks_int" => {
+                    metrics.forks = Some(value as u64);
+                }
+                "cardano_node_metrics_slotsMissedNum_int" => {
+                    metrics.missed_slots = Some(value as u64);
+                }
 
                 // Peer metrics
                 "cardano_node_metrics_connectedPeers_int" => {
                     metrics.peers_connected = Some(value as u64);
                 }
 
-                // Resource metrics (multiple name variations)
-                "cardano_node_metrics_RTS_gcLiveBytes_int" 
-                | "cardano_node_metrics_RTS_gcLiveBytes"
-                | "cardano_node_metrics_RTS_GCLiveBytes_int" => {
+                // Resource metrics (GC and memory)
+                "cardano_node_metrics_RTS_gcLiveBytes_int" => {
                     metrics.memory_used = Some(value as u64);
                 }
+                "cardano_node_metrics_RTS_gcHeapBytes_int" => {
+                    metrics.memory_heap = Some(value as u64);
+                }
                 "cardano_node_metrics_Mem_resident_int" => {
-                    // Resident memory (alternative metric)
+                    // Resident memory (fallback if GC metrics unavailable)
                     if metrics.memory_used.is_none() {
                         metrics.memory_used = Some(value as u64);
                     }
+                }
+                "cardano_node_metrics_RTS_gcMinorNum_int" => {
+                    metrics.gc_minor = Some(value as u64);
+                }
+                "cardano_node_metrics_RTS_gcMajorNum_int" => {
+                    metrics.gc_major = Some(value as u64);
                 }
                 // CPU metrics from GC
                 "rts_gc_cpu_ms" => {
@@ -200,14 +253,32 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.cpu_ms = Some((value / 1_000_000.0) as u64);
                 }
 
-                // Mempool metrics (multiple possible names for compatibility)
-                "cardano_node_metrics_txsInMempool_int" 
-                | "cardano_node_metrics_Mempool_TxsInMempool_int" => {
+                // Mempool metrics
+                "cardano_node_metrics_txsInMempool_int" => {
                     metrics.mempool_txs = Some(value as u64);
                 }
-                "cardano_node_metrics_mempoolBytes_int"
-                | "cardano_node_metrics_Mempool_bytes_int" => {
+                "cardano_node_metrics_mempoolBytes_int" => {
                     metrics.mempool_bytes = Some(value as u64);
+                }
+
+                // Block fetch client metrics
+                "cardano_node_metrics_blockfetchclient_blockdelay_s" => {
+                    metrics.block_delay_s = Some(value);
+                }
+                "cardano_node_metrics_served_block_count_int" => {
+                    metrics.blocks_served = Some(value as u64);
+                }
+                "cardano_node_metrics_blockfetchclient_lateblocks" => {
+                    metrics.blocks_late = Some(value as u64);
+                }
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne" => {
+                    metrics.block_delay_cdf_1s = Some(value);
+                }
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree" => {
+                    metrics.block_delay_cdf_3s = Some(value);
+                }
+                "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive" => {
+                    metrics.block_delay_cdf_5s = Some(value);
                 }
 
                 // Sync progress (if available)
@@ -225,21 +296,27 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.uptime_seconds = Some(value / 1_000_000_000.0);
                 }
 
-                // Connection manager metrics (new naming from actual nodes)
+                // Connection manager metrics (official names from nview)
                 "cardano_node_metrics_connectionManager_incomingConns" => {
                     metrics.incoming_connections = Some(value as u64);
                 }
                 "cardano_node_metrics_connectionManager_outgoingConns" => {
                     metrics.outgoing_connections = Some(value as u64);
                 }
-                "cardano_node_metrics_connectionManager_fullDuplexConns" => {
+                "cardano_node_metrics_connectionManager_duplexConns" => {
                     metrics.full_duplex_connections = Some(value as u64);
                 }
                 "cardano_node_metrics_connectionManager_unidirectionalConns" => {
                     metrics.unidirectional_connections = Some(value as u64);
                 }
-                "cardano_node_metrics_connectionManager_duplexConns" => {
-                    metrics.full_duplex_connections = Some(value as u64);
+                "cardano_node_metrics_connectionManager_prunableConns" => {
+                    metrics.prunable_connections = Some(value as u64);
+                }
+                // Legacy fullDuplexConns name for compatibility
+                "cardano_node_metrics_connectionManager_fullDuplexConns" => {
+                    if metrics.full_duplex_connections.is_none() {
+                        metrics.full_duplex_connections = Some(value as u64);
+                    }
                 }
 
                 // P2P (peer-to-peer) network metrics (legacy naming)
@@ -291,6 +368,20 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
                 "cardano_node_metrics_operationalCertificateExpiryKESPeriod_int" => {
                     metrics.kes_periods_per_cert = Some(value as u64);
+                }
+
+                // Forging metrics (block producers)
+                "cardano_node_metrics_Forge_node_is_leader_int" => {
+                    metrics.is_leader = Some(value > 0.0);
+                }
+                "cardano_node_metrics_Forge_adopted_int" => {
+                    metrics.blocks_adopted = Some(value as u64);
+                }
+                "cardano_node_metrics_Forge_didnt_adopt_int" => {
+                    metrics.blocks_didnt_adopt = Some(value as u64);
+                }
+                "cardano_node_metrics_Forge_forge_about_to_lead_int" => {
+                    metrics.about_to_lead = Some(value as u64);
                 }
 
                 _ => {}
