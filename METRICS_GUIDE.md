@@ -131,16 +131,22 @@ If uptime, CPU, or mempool metrics aren't showing:
 curl http://localhost:12798/metrics | grep "upTime\|cpu\|Mempool"
 ```
 
-### 2. If not found, update node configuration
+### 2. Verify node configuration (node config.json)
 
-Your `node.json` should have:
+Your Cardano node's `config.json` should have Prometheus enabled:
 ```json
 {
-  "monitoringPort": 12798,
-  "enablePrometheus": true,
-  "logMetrics": true
+  "hasPrometheus": ["127.0.0.1", 12798],
+  "TurnOnLogging": true,
+  "TurnOnLogMetrics": true,
+  "TracingVerbosity": "NormalVerbosity"
 }
 ```
+
+**Key settings:**
+- `"hasPrometheus": ["<bind_address>", <port>]` - Enables Prometheus metrics (default: 127.0.0.1:12798)
+- `"TurnOnLogMetrics": true` - Enables metric collection
+- `"TracingVerbosity": "NormalVerbosity"` - Sets logging detail level
 
 ### 3. Restart node
 ```bash
@@ -151,6 +157,11 @@ systemctl restart cardano-node
 ```bash
 curl http://localhost:12798/metrics | grep -E "upTime|RTS_cpu|Mempool"
 ```
+
+### Reference Configuration
+
+For a complete example, see the official Cardano node configuration:
+https://book.world.dev.cardano.org/environments/mainnet/config.json
 
 ## Expected Behavior
 

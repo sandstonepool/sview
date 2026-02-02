@@ -201,8 +201,34 @@ sview uses color-coded indicators to show node health at a glance:
 
 ## Requirements
 
-- A running Cardano node with Prometheus metrics enabled
+### Cardano Node Setup
+
+Your Cardano node must have Prometheus metrics enabled. Add this to your `config.json`:
+
+```json
+{
+  "hasPrometheus": ["127.0.0.1", 12798],
+  "TurnOnLogging": true,
+  "TurnOnLogMetrics": true
+}
+```
+
+Then restart your node:
+```bash
+systemctl restart cardano-node
+```
+
+Verify metrics are exposed:
+```bash
+curl http://localhost:12798/metrics | head -20
+```
+
+See [METRICS_GUIDE.md](METRICS_GUIDE.md) for detailed troubleshooting.
+
+### System Requirements
+
 - Terminal with Unicode support (minimum 80x24 recommended)
+- Network access to Cardano node's Prometheus endpoint (default: localhost:12798)
 
 ## License
 
