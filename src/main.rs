@@ -118,8 +118,8 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 app.toggle_peers().await;
                             }
                             KeyCode::Char('r') => app.refresh_peers().await,
-                            KeyCode::Up | KeyCode::Char('k') => app.peer_list_up(),
-                            KeyCode::Down | KeyCode::Char('j') => app.peer_list_down(),
+                            KeyCode::Up | KeyCode::Char('k') => app.peer_list_up(20),
+                            KeyCode::Down | KeyCode::Char('j') => app.peer_list_down(20),
                             KeyCode::Enter | KeyCode::Right => app.show_peer_detail(),
                             _ => {}
                         }

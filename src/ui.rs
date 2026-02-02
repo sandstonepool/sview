@@ -816,6 +816,9 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
     let node = app.current_node();
     let peers = &node.peer_connections;
 
+    // Calculate visible rows (popup height - borders - header - footer - header margin)
+    let visible_rows = popup_area.height.saturating_sub(6) as usize;
+
     // Build table rows
     let mut rows: Vec<Row> = Vec::new();
 
@@ -850,7 +853,16 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
             Cell::from(""),
         ]));
     } else {
-        for (idx, peer) in sorted_peers.iter().enumerate() {
+        // Apply scroll offset - only render visible rows
+        let scroll_offset = app.peer_list_scroll;
+        let end_idx = (scroll_offset + visible_rows).min(sorted_peers.len());
+
+        for (idx, peer) in sorted_peers
+            .iter()
+            .enumerate()
+            .skip(scroll_offset)
+            .take(end_idx - scroll_offset)
+        {
             let is_selected = idx == app.peer_list_selected;
 
             let dir_style = if peer.incoming {
@@ -932,12 +944,25 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
         }
     };
 
+    // Show scroll position if there are more items than visible
+    let scroll_indicator = if sorted_peers.len() > visible_rows {
+        format!(
+            " [{}-{}/{}]",
+            app.peer_list_scroll + 1,
+            (app.peer_list_scroll + visible_rows).min(sorted_peers.len()),
+            sorted_peers.len()
+        )
+    } else {
+        String::new()
+    };
+
     let title = format!(
-        " Peer Connections — {} total (IN: {} OUT: {}) — Avg RTT: {:.1}ms ",
+        " Peer Connections — {} total (IN: {} OUT: {}) — Avg RTT: {:.1}ms{} ",
         peers.len(),
         incoming_count,
         outgoing_count,
-        avg_rtt
+        avg_rtt,
+        scroll_indicator
     );
 
     // Create header row

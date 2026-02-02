@@ -479,17 +479,25 @@ impl App {
     }
 
     /// Move selection up in peer list
-    pub fn peer_list_up(&mut self) {
+    pub fn peer_list_up(&mut self, _visible_rows: usize) {
         if self.peer_list_selected > 0 {
             self.peer_list_selected -= 1;
+            // Scroll up if selection goes above visible area
+            if self.peer_list_selected < self.peer_list_scroll {
+                self.peer_list_scroll = self.peer_list_selected;
+            }
         }
     }
 
     /// Move selection down in peer list
-    pub fn peer_list_down(&mut self) {
+    pub fn peer_list_down(&mut self, visible_rows: usize) {
         let peer_count = self.nodes[self.selected_node].peer_connections.len();
         if peer_count > 0 && self.peer_list_selected < peer_count - 1 {
             self.peer_list_selected += 1;
+            // Scroll down if selection goes below visible area
+            if visible_rows > 0 && self.peer_list_selected >= self.peer_list_scroll + visible_rows {
+                self.peer_list_scroll = self.peer_list_selected - visible_rows + 1;
+            }
         }
     }
 
