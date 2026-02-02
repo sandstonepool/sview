@@ -6,6 +6,7 @@
 use crate::config::{AppConfig, Config, NodeRole, NodeRuntimeConfig};
 use crate::history::MetricsHistory;
 use crate::metrics::{MetricsClient, NodeMetrics};
+use crate::peers::PeerMonitor;
 use crate::storage::StorageManager;
 use std::time::Instant;
 use tracing::{debug, warn};
@@ -40,6 +41,8 @@ pub struct NodeState {
     pub history: MetricsHistory,
     /// Persistent storage manager
     storage: StorageManager,
+    /// Peer monitor for tracking peer statistics
+    pub peer_monitor: PeerMonitor,
     /// Last fetch error (if any)
     pub last_error: Option<String>,
     /// Fetch count
@@ -88,6 +91,7 @@ impl NodeState {
             metrics: NodeMetrics::default(),
             history,
             storage,
+            peer_monitor: PeerMonitor::new(),
             last_error: None,
             fetch_count: 0,
             last_fetch_time: None,
@@ -113,8 +117,19 @@ impl NodeState {
                     }
                 }
 
-                self.metrics = metrics;
+                self.metrics = metrics.clone();
                 self.history.update(&self.metrics);
+                
+                // Update peer monitor with current peer statistics
+                self.peer_monitor.update_from_metrics(
+                    self.metrics.p2p.hot_peers,
+                    self.metrics.p2p.warm_peers,
+                    self.metrics.p2p.cold_peers,
+                    self.metrics.incoming_connections,
+                    self.metrics.outgoing_connections,
+                    self.metrics.full_duplex_connections,
+                );
+                
                 self.last_error = None;
                 self.fetch_count += 1;
                 self.last_fetch_time = Some(Instant::now());

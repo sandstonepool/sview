@@ -10,6 +10,7 @@ mod app;
 mod config;
 mod history;
 mod metrics;
+mod peers;
 mod storage;
 mod ui;
 
