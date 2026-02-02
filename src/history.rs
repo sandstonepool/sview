@@ -99,6 +99,10 @@ pub struct MetricsHistory {
     pub memory_used: MetricHistory,
     pub mempool_txs: MetricHistory,
     pub sync_progress: MetricHistory,
+    // P2P metrics
+    pub p2p_hot_peers: MetricHistory,
+    pub p2p_warm_peers: MetricHistory,
+    pub p2p_cold_peers: MetricHistory,
 }
 
 impl MetricsHistory {
@@ -111,6 +115,9 @@ impl MetricsHistory {
             memory_used: MetricHistory::new(capacity),
             mempool_txs: MetricHistory::new(capacity),
             sync_progress: MetricHistory::new(capacity),
+            p2p_hot_peers: MetricHistory::new(capacity),
+            p2p_warm_peers: MetricHistory::new(capacity),
+            p2p_cold_peers: MetricHistory::new(capacity),
         }
     }
 
@@ -133,6 +140,16 @@ impl MetricsHistory {
         }
         if let Some(v) = metrics.sync_progress {
             self.sync_progress.push(v);
+        }
+        // P2P metrics
+        if let Some(v) = metrics.p2p.hot_peers {
+            self.p2p_hot_peers.push(v as f64);
+        }
+        if let Some(v) = metrics.p2p.warm_peers {
+            self.p2p_warm_peers.push(v as f64);
+        }
+        if let Some(v) = metrics.p2p.cold_peers {
+            self.p2p_cold_peers.push(v as f64);
         }
     }
 }
