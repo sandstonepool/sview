@@ -44,6 +44,8 @@ pub struct NodeState {
     pub last_error: Option<String>,
     /// Fetch count
     pub fetch_count: u64,
+    /// Last successful metrics fetch time
+    pub last_fetch_time: Option<Instant>,
     /// Last observed block height (for tip age tracking)
     last_block_height: Option<u64>,
     /// Time when block height last changed
@@ -88,6 +90,7 @@ impl NodeState {
             storage,
             last_error: None,
             fetch_count: 0,
+            last_fetch_time: None,
             last_block_height: None,
             last_block_time: None,
         }
@@ -114,6 +117,7 @@ impl NodeState {
                 self.history.update(&self.metrics);
                 self.last_error = None;
                 self.fetch_count += 1;
+                self.last_fetch_time = Some(Instant::now());
 
                 // Save snapshot to persistent storage (hourly sampling)
                 if let Err(e) = self.storage.save_snapshot(&self.metrics) {
@@ -136,6 +140,12 @@ impl NodeState {
     /// Get seconds since last block was received
     pub fn tip_age_secs(&self) -> Option<u64> {
         self.last_block_time.map(|t| t.elapsed().as_secs())
+    }
+
+    /// Get seconds since last successful metrics fetch
+    #[allow(dead_code)]
+    pub fn last_fetch_age_secs(&self) -> Option<u64> {
+        self.last_fetch_time.map(|t| t.elapsed().as_secs())
     }
 
     /// Get the health status for peer count
