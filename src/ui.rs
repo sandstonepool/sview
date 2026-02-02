@@ -152,36 +152,59 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the main content area with metrics
 fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Split into three columns: Chain (33%), Network (33%), Resources (34%)
+    // Split into top metrics area and bottom sparklines area
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(18), Constraint::Length(5)])
+        .split(area);
+
+    // Top section: 3-column metrics layout
+    draw_metrics_section(frame, chunks[0], app, palette);
+
+    // Bottom section: Side-by-side sparklines
+    draw_sparklines_section(frame, chunks[1], app, palette);
+}
+
+/// Draw the metrics section (chain, network, resources in 3 columns)
+fn draw_metrics_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(34)])
         .split(area);
 
-    // Left column: Chain & Block Metrics
-    draw_chain_panel(frame, chunks[0], app, palette);
+    // Left column: Chain Metrics
+    draw_chain_metrics_compact(frame, chunks[0], app, palette);
 
     // Middle column: Network & Peer Metrics
     draw_network_panel(frame, chunks[1], app, palette);
 
     // Right column: Resource & System Metrics
-    draw_resource_panel(frame, chunks[2], app, palette);
+    draw_resource_metrics_compact(frame, chunks[2], app, palette);
 }
 
-/// Draw chain/block metrics panel
-fn draw_chain_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw the sparklines section (block + memory side-by-side)
+fn draw_sparklines_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    draw_block_sparkline(frame, chunks[0], app, palette);
+    draw_memory_sparkline(frame, chunks[1], app, palette);
+}
+
+/// Draw compact chain metrics (without sparkline)
+fn draw_chain_metrics_compact(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(11), // Chain metrics table (expanded)
+            Constraint::Length(11), // Chain metrics table
             Constraint::Length(3),  // Epoch progress gauge
-            Constraint::Min(4),     // Block height sparkline
         ])
         .split(area);
 
     draw_chain_metrics(frame, chunks[0], app, palette);
     draw_epoch_progress(frame, chunks[1], app, palette);
-    draw_block_sparkline(frame, chunks[2], app, palette);
 }
 
 /// Draw chain metrics table
@@ -469,18 +492,9 @@ fn draw_peer_breakdown(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
     frame.render_widget(table, area);
 }
 
-/// Draw resource/system metrics panel
-fn draw_resource_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(13), // Resource metrics table (expanded)
-            Constraint::Min(2),     // Memory sparkline (minimal height)
-        ])
-        .split(area);
-
-    draw_resource_metrics(frame, chunks[0], app, palette);
-    draw_memory_sparkline(frame, chunks[1], app, palette);
+/// Draw compact resource metrics (without sparkline)
+fn draw_resource_metrics_compact(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    draw_resource_metrics(frame, area, app, palette);
 }
 
 /// Draw resource/system metrics
