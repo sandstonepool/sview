@@ -373,9 +373,10 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palett
     let kes_health = node.kes_health();
 
     let mut rows = vec![
-        create_metric_row(
+        create_metric_row_with_trend(
             "Block Height",
             format_metric_u64(metrics.block_height),
+            node.history.block_height.trend(),
             palette,
         ),
         create_health_row(
@@ -450,14 +451,19 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
     let node = app.current_node();
     let metrics = &node.metrics;
     let peer_health = node.peer_health();
+    let peer_trend = node.history.peers_connected.trend();
+
+    // Format connected peers with trend indicator
+    let connected_value = format_metric_u64(metrics.peers_connected);
+    let (trend_indicator, _) = format_trend(peer_trend, palette);
+    let connected_with_trend = if !trend_indicator.is_empty() {
+        format!("{} {}", connected_value, trend_indicator)
+    } else {
+        connected_value
+    };
 
     let rows = vec![
-        create_health_row(
-            "Connected",
-            format_metric_u64(metrics.peers_connected),
-            peer_health,
-            palette,
-        ),
+        create_health_row("Connected", connected_with_trend, peer_health, palette),
         create_metric_row(
             "Incoming",
             format_metric_u64(metrics.incoming_connections),
@@ -845,6 +851,37 @@ fn create_metric_row<'a>(label: &'a str, value: String, palette: &Palette) -> Ro
         Cell::from(Span::styled(label, Style::default().fg(palette.text_muted))),
         Cell::from(Span::styled(value, Style::default().fg(palette.text))),
     ])
+}
+
+fn create_metric_row_with_trend<'a>(
+    label: &'a str,
+    value: String,
+    trend: Option<f64>,
+    palette: &Palette,
+) -> Row<'a> {
+    let (trend_indicator, trend_color) = format_trend(trend, palette);
+    let value_with_trend = if !trend_indicator.is_empty() {
+        format!("{} {}", value, trend_indicator)
+    } else {
+        value
+    };
+    Row::new(vec![
+        Cell::from(Span::styled(label, Style::default().fg(palette.text_muted))),
+        Cell::from(Span::styled(
+            value_with_trend,
+            Style::default().fg(trend_color),
+        )),
+    ])
+}
+
+/// Format a trend value into an indicator arrow and color
+fn format_trend(trend: Option<f64>, palette: &Palette) -> (&'static str, Color) {
+    match trend {
+        Some(t) if t > 0.5 => ("↑", palette.healthy),
+        Some(t) if t < -0.5 => ("↓", palette.critical),
+        Some(_) => ("→", palette.text),
+        None => ("", palette.text),
+    }
 }
 
 fn create_health_row<'a>(
