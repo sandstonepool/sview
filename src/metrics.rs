@@ -6,6 +6,7 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::time::Duration;
+use tracing::debug;
 
 /// P2P (peer-to-peer) network statistics
 #[derive(Debug, Clone, Default)]
@@ -138,6 +139,13 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         // Parse metric line: metric_name{labels} value
         if let Some((name, value)) = parse_metric_line(line) {
             metrics.raw.insert(name.clone(), value);
+            
+            // Log interesting metrics for debugging
+            if name.contains("Uptime") || name.contains("upTime") || 
+               name.contains("cpu") || name.contains("Mempool") || 
+               name.contains("Txs") {
+                debug!("Found metric: {} = {}", name, value);
+            }
 
             // Map known metrics to structured fields
             match name.as_str() {
@@ -160,20 +168,26 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.peers_connected = Some(value as u64);
                 }
 
-                // Resource metrics
-                "cardano_node_metrics_RTS_gcLiveBytes_int" => {
+                // Resource metrics (multiple name variations)
+                "cardano_node_metrics_RTS_gcLiveBytes_int" 
+                | "cardano_node_metrics_RTS_gcLiveBytes"
+                | "cardano_node_metrics_RTS_GCLiveBytes_int" => {
                     metrics.memory_used = Some(value as u64);
                 }
-                "cardano_node_metrics_RTS_cpuNs_int" => {
+                "cardano_node_metrics_RTS_cpuNs_int" 
+                | "cardano_node_metrics_RTS_cpu_ns"
+                | "cardano_node_metrics_RTS_cpuNs" => {
                     // Convert nanoseconds to seconds
                     metrics.cpu_seconds = Some(value / 1_000_000_000.0);
                 }
 
-                // Mempool metrics
-                "cardano_node_metrics_txsInMempool_int" => {
+                // Mempool metrics (multiple possible names for compatibility)
+                "cardano_node_metrics_txsInMempool_int" 
+                | "cardano_node_metrics_Mempool_TxsInMempool_int" => {
                     metrics.mempool_txs = Some(value as u64);
                 }
-                "cardano_node_metrics_mempoolBytes_int" => {
+                "cardano_node_metrics_mempoolBytes_int"
+                | "cardano_node_metrics_Mempool_bytes_int" => {
                     metrics.mempool_bytes = Some(value as u64);
                 }
 
@@ -182,8 +196,9 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.sync_progress = Some(value * 100.0);
                 }
 
-                // Uptime metrics
-                "cardano_node_metrics_upTime_ns" => {
+                // Uptime metrics (multiple possible names)
+                "cardano_node_metrics_upTime_ns" 
+                | "cardano_node_metrics_Stat_startTime" => {
                     // Convert nanoseconds to seconds
                     metrics.uptime_seconds = Some(value / 1_000_000_000.0);
                 }
@@ -235,6 +250,21 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
 
     // Detect node type based on available metrics
     metrics.node_type = detect_node_type(&metrics.raw);
+
+    // Log available metrics if in debug mode
+    let available_metrics: Vec<&str> = metrics
+        .raw
+        .keys()
+        .filter(|k| {
+            k.contains("Uptime") || k.contains("upTime") || k.contains("cpu") || 
+            k.contains("Mempool") || k.contains("memory") || k.contains("Memory")
+        })
+        .map(|s| s.as_str())
+        .collect();
+    
+    if !available_metrics.is_empty() {
+        debug!("Available resource metrics: {:?}", available_metrics);
+    }
 
     metrics
 }
