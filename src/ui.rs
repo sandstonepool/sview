@@ -209,47 +209,39 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the main content area
 fn draw_main_content(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Two-row layout: gauges on top, metrics below
+    // 3 equal columns, each with gauge + metrics
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Ratio(1, 3), // Chain column
+            Constraint::Ratio(1, 3), // Network column
+            Constraint::Ratio(1, 3), // Resources column
+        ])
+        .split(area);
+
+    draw_chain_column(frame, columns[0], app, palette);
+    draw_network_column(frame, columns[1], app, palette);
+    draw_resources_column(frame, columns[2], app, palette);
+}
+
+/// Draw chain column (epoch gauge + chain metrics)
+fn draw_chain_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Progress gauges
-            Constraint::Min(8),    // Metrics tables
+            Constraint::Length(3), // Epoch gauge
+            Constraint::Min(5),    // Chain metrics
         ])
         .split(area);
 
-    // Top row: Epoch progress + Sync + Memory gauges
-    draw_gauge_row(frame, chunks[0], app, palette);
-
-    // Bottom row: Metrics tables
-    draw_metrics_and_sparklines(frame, chunks[1], app, palette);
-}
-
-/// Draw the gauge row (epoch, sync, memory)
-fn draw_gauge_row(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(50), // Epoch progress
-            Constraint::Percentage(25), // Sync progress
-            Constraint::Percentage(25), // Memory usage
-        ])
-        .split(area);
-
-    draw_epoch_gauge(frame, chunks[0], app, palette);
-    draw_sync_gauge(frame, chunks[1], app, palette);
-    draw_memory_gauge(frame, chunks[2], app, palette);
-}
-
-/// Draw epoch progress gauge
-fn draw_epoch_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // Epoch progress gauge
     let node = app.current_node();
     let progress = node.epoch_progress().unwrap_or(0.0);
     let time_remaining = node.epoch_time_remaining();
 
     let label = match (node.metrics.epoch, time_remaining) {
         (Some(epoch), Some(secs)) => format!(
-            "Epoch {} — {:.1}% — {} left",
+            "E{} {:.1}% {}",
             epoch,
             progress,
             format_time_remaining(secs)
@@ -268,7 +260,7 @@ fn draw_epoch_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Epoch Progress ")
+                .title(" Epoch ")
                 .border_style(Style::default().fg(palette.border)),
         )
         .gauge_style(Style::default().fg(gauge_color).bg(Color::DarkGray))
@@ -278,11 +270,23 @@ fn draw_epoch_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
             Style::default().fg(palette.text).bold(),
         ));
 
-    frame.render_widget(gauge, area);
+    frame.render_widget(gauge, chunks[0]);
+
+    // Chain metrics
+    draw_chain_metrics(frame, chunks[1], app, palette);
 }
 
-/// Draw sync progress gauge
-fn draw_sync_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw network column (sync gauge + network metrics)
+fn draw_network_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Sync gauge
+            Constraint::Min(5),    // Network metrics
+        ])
+        .split(area);
+
+    // Sync progress gauge
     let node = app.current_node();
     let progress = node.metrics.sync_progress.unwrap_or(0.0);
     let sync_health = node.sync_health();
@@ -311,11 +315,23 @@ fn draw_sync_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
             Style::default().fg(palette.text).bold(),
         ));
 
-    frame.render_widget(gauge, area);
+    frame.render_widget(gauge, chunks[0]);
+
+    // Network metrics
+    draw_network_metrics(frame, chunks[1], app, palette);
 }
 
-/// Draw memory usage gauge
-fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw resources column (memory gauge + resource metrics)
+fn draw_resources_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Memory gauge
+            Constraint::Min(5),    // Resource metrics
+        ])
+        .split(area);
+
+    // Memory usage gauge
     let node = app.current_node();
     let metrics = &node.metrics;
     let memory_health = node.memory_health();
@@ -349,24 +365,10 @@ fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
             Style::default().fg(palette.text).bold(),
         ));
 
-    frame.render_widget(gauge, area);
-}
+    frame.render_widget(gauge, chunks[0]);
 
-/// Draw metrics tables
-fn draw_metrics_and_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // 3-column layout: Chain | Network | Resources
-    let columns = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(33), // Chain metrics
-            Constraint::Percentage(34), // Network metrics
-            Constraint::Percentage(33), // Resources
-        ])
-        .split(area);
-
-    draw_chain_metrics(frame, columns[0], app, palette);
-    draw_network_metrics(frame, columns[1], app, palette);
-    draw_resources_with_sparklines(frame, columns[2], app, palette);
+    // Resource metrics
+    draw_resource_metrics(frame, chunks[1], app, palette);
 }
 
 /// Draw chain metrics table
@@ -508,13 +510,6 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
             palette,
         ),
         create_metric_row(
-            "Unidirectional",
-            format_metric_u64(metrics.unidirectional_connections),
-            palette,
-        ),
-        create_separator_row(palette),
-        // Peer distribution bar showing hot/warm/cold ratio
-        create_metric_row(
             "Peer Dist",
             format_peer_distribution(
                 metrics.p2p.hot_peers,
@@ -523,19 +518,11 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
             ),
             palette,
         ),
-        create_separator_row(palette),
         create_metric_row(
             "Block Delay",
             format_block_delay(metrics.block_delay_s),
             palette,
         ),
-        create_metric_row(
-            "Blocks Served",
-            format_metric_u64(metrics.blocks_served),
-            palette,
-        ),
-        create_separator_row(palette),
-        // Block propagation CDF (percentage of blocks received within time threshold)
         create_metric_row(
             "Prop ≤1s",
             format_cdf_percent(metrics.block_delay_cdf_1s),
@@ -565,12 +552,6 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
     );
 
     frame.render_widget(table, area);
-}
-
-/// Draw resources section
-fn draw_resources_with_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Draw resource metrics (sparklines removed)
-    draw_resource_metrics(frame, area, app, palette);
 }
 
 /// Draw resource metrics table
@@ -1021,19 +1002,6 @@ fn create_health_row<'a>(
     Row::new(vec![
         Cell::from(Span::styled(label, Style::default().fg(color))),
         Cell::from(Span::styled(value, Style::default().fg(color))),
-    ])
-}
-
-fn create_separator_row(palette: &Palette) -> Row<'static> {
-    Row::new(vec![
-        Cell::from(Span::styled(
-            "─────────",
-            Style::default().fg(palette.border),
-        )),
-        Cell::from(Span::styled(
-            "────────",
-            Style::default().fg(palette.border),
-        )),
     ])
 }
 
