@@ -473,13 +473,23 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool) {
 
     // Add multi-node shortcuts if applicable
     if is_multi_node {
+        help_lines.push(Line::from(""));
+        help_lines.push(Line::from(Span::styled(
+            "Multi-Node Navigation",
+            Style::default().bold().underlined(),
+        )));
+        help_lines.push(Line::from(""));
         help_lines.push(Line::from(vec![
             Span::styled("  Tab       ", Style::default().fg(Color::Yellow)),
-            Span::raw("Switch to next node"),
+            Span::raw("Next node"),
         ]));
         help_lines.push(Line::from(vec![
             Span::styled("  Shift+Tab ", Style::default().fg(Color::Yellow)),
-            Span::raw("Switch to previous node"),
+            Span::raw("Previous node"),
+        ]));
+        help_lines.push(Line::from(vec![
+            Span::styled("  ← →       ", Style::default().fg(Color::Yellow)),
+            Span::raw("Switch nodes"),
         ]));
         help_lines.push(Line::from(vec![
             Span::styled("  1-9       ", Style::default().fg(Color::Yellow)),
