@@ -15,11 +15,6 @@ cardano_node_metrics_slotInEpoch_int          # Slot within epoch
 cardano_node_metrics_connectedPeers_int       # Connected peer count
 ```
 
-### Sync Status (Required for monitoring)
-```
-cardano_node_metrics_ChainSync_progress       # Sync progress (0-1)
-```
-
 ## Optional Metrics (May Not Be Present)
 
 ### Resource Metrics
@@ -210,7 +205,6 @@ To report missing metrics or get help:
 |--------|--------|-----------|
 | Block Height | ✅ Always | Node running |
 | Peer Count | ✅ Always | Node running |
-| Sync Progress | ✅ Always | Node running |
 | Memory Used | ✅ Usually | Node version |
 | Uptime | ⚠️ Sometimes | Node config |
 | CPU Time | ⚠️ Sometimes | Node version |
