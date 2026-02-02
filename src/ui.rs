@@ -206,6 +206,10 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
 
     let rows = vec![
         Row::new(vec![
+            Cell::from("Uptime"),
+            Cell::from(format_uptime(metrics.uptime_seconds)),
+        ]),
+        Row::new(vec![
             Cell::from(Span::styled(
                 "Memory Used",
                 Style::default().fg(health_to_color(memory_health)),
@@ -434,6 +438,26 @@ fn format_sync_progress(progress: Option<f64>) -> String {
     match progress {
         Some(p) if p >= 99.9 => "100% ✓".to_string(),
         Some(p) => format!("{:.2}%", p),
+        None => "—".to_string(),
+    }
+}
+
+fn format_uptime(seconds: Option<f64>) -> String {
+    match seconds {
+        Some(s) => {
+            let total_secs = s as u64;
+            let days = total_secs / 86400;
+            let hours = (total_secs % 86400) / 3600;
+            let mins = (total_secs % 3600) / 60;
+
+            if days > 0 {
+                format!("{}d {}h {}m", days, hours, mins)
+            } else if hours > 0 {
+                format!("{}h {}m", hours, mins)
+            } else {
+                format!("{}m", mins)
+            }
+        }
         None => "—".to_string(),
     }
 }

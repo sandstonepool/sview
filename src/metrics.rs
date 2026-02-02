@@ -150,6 +150,12 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     metrics.sync_progress = Some(value * 100.0);
                 }
 
+                // Uptime metrics
+                "cardano_node_metrics_upTime_ns" => {
+                    // Convert nanoseconds to seconds
+                    metrics.uptime_seconds = Some(value / 1_000_000_000.0);
+                }
+
                 _ => {}
             }
         }
@@ -233,5 +239,15 @@ cardano_node_metrics_connectedPeers_int 5
         assert_eq!(metrics.epoch, Some(450));
         assert_eq!(metrics.peers_connected, Some(5));
         assert_eq!(metrics.node_type, NodeType::CardanoNode);
+    }
+
+    #[test]
+    fn test_parse_uptime_metric() {
+        let text = r#"
+cardano_node_metrics_upTime_ns 86400000000000
+"#;
+        let metrics = parse_prometheus_metrics(text);
+        // 86400 seconds = 1 day
+        assert_eq!(metrics.uptime_seconds, Some(86400.0));
     }
 }
