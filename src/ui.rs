@@ -6,7 +6,7 @@ use crate::app::{App, AppMode, HealthStatus};
 use crate::themes::Palette;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Table, Tabs, Wrap},
 };
 
 /// Main draw function - renders the entire UI
@@ -85,7 +85,12 @@ fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         .collect();
 
     let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title(" Nodes ").border_style(Style::default().fg(palette.border)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Nodes ")
+                .border_style(Style::default().fg(palette.border)),
+        )
         .select(app.selected_node)
         .style(Style::default().fg(palette.text))
         .highlight_style(
@@ -156,8 +161,8 @@ fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Epoch progress + memory gauge (side-by-side)
-            Constraint::Min(15),    // Metrics section (3 columns)
+            Constraint::Length(3), // Epoch progress + memory gauge (side-by-side)
+            Constraint::Min(15),   // Metrics section (3 columns)
         ])
         .split(area);
 
@@ -183,7 +188,11 @@ fn draw_epoch_and_memory_section(frame: &mut Frame, area: Rect, app: &App, palet
 fn draw_metrics_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(34)])
+        .constraints([
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+        ])
         .split(area);
 
     // Left column: Chain Metrics
@@ -570,7 +579,10 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let footer_text = if let Some(ref error) = node.last_error {
         Line::from(vec![
             Span::styled(" Error: ", Style::default().fg(palette.critical).bold()),
-            Span::styled(truncate_string(error, 60), Style::default().fg(palette.critical)),
+            Span::styled(
+                truncate_string(error, 60),
+                Style::default().fg(palette.critical),
+            ),
         ])
     } else {
         let mut spans = vec![
@@ -586,14 +598,23 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
         // Add node switching hints if multi-node
         if app.is_multi_node() {
-            spans.push(Span::styled("[Tab] ", Style::default().fg(palette.tertiary)));
+            spans.push(Span::styled(
+                "[Tab] ",
+                Style::default().fg(palette.tertiary),
+            ));
             spans.push(Span::raw("Next  "));
-            spans.push(Span::styled("[1-9] ", Style::default().fg(palette.tertiary)));
+            spans.push(Span::styled(
+                "[1-9] ",
+                Style::default().fg(palette.tertiary),
+            ));
             spans.push(Span::raw("Select  "));
         }
 
         spans.push(Span::raw("│ "));
-        spans.push(Span::styled(endpoint, Style::default().fg(palette.text_muted)));
+        spans.push(Span::styled(
+            endpoint,
+            Style::default().fg(palette.text_muted),
+        ));
 
         Line::from(spans)
     };
