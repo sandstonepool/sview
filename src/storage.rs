@@ -137,7 +137,8 @@ impl StorageManager {
 
     /// Get the file path for a specific date
     fn date_file(&self, year: u32, month: u32, day: u32) -> PathBuf {
-        self.date_dir(year, month).join(format!("{:02}.json.gz", day))
+        self.date_dir(year, month)
+            .join(format!("{:02}.json.gz", day))
     }
 
     /// Get current date components
@@ -371,12 +372,11 @@ impl StorageManager {
 
     /// Write a daily file
     fn write_daily_file(&self, path: &PathBuf, daily: &DailySnapshots) -> Result<()> {
-        let file =
-            File::create(path).with_context(|| format!("Failed to create {:?}", path))?;
+        let file = File::create(path).with_context(|| format!("Failed to create {:?}", path))?;
         let writer = BufWriter::new(file);
         let mut encoder = GzEncoder::new(writer, Compression::default());
-        let json_str = serde_json::to_string(daily)
-            .with_context(|| "Failed to serialize snapshots")?;
+        let json_str =
+            serde_json::to_string(daily).with_context(|| "Failed to serialize snapshots")?;
         encoder
             .write_all(json_str.as_bytes())
             .with_context(|| format!("Failed to write {:?}", path))?;

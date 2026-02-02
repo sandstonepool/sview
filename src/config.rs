@@ -210,10 +210,10 @@ impl AppConfig {
     /// Load configuration from CLI, environment, and config file
     pub fn load() -> Self {
         let args = CliArgs::parse();
-        
+
         // Determine config file path
         let config_path = args.config.clone().or_else(default_config_path);
-        
+
         // Try to load config file
         let file_config = config_path
             .and_then(|p| fs::read_to_string(&p).ok())
@@ -222,7 +222,7 @@ impl AppConfig {
 
         // Check if we should use CLI single-node mode or config file multi-node mode
         let cli_node_specified = args.prom_host.is_some() || args.prom_port.is_some();
-        
+
         let nodes = if cli_node_specified || file_config.nodes.is_empty() {
             // Single-node mode from CLI
             vec![NodeRuntimeConfig {
@@ -230,7 +230,9 @@ impl AppConfig {
                 host: args.prom_host.unwrap_or_else(|| "127.0.0.1".to_string()),
                 port: args.prom_port.unwrap_or(12798),
                 role: NodeRole::Relay,
-                network: args.network.unwrap_or_else(|| file_config.global.network.clone()),
+                network: args
+                    .network
+                    .unwrap_or_else(|| file_config.global.network.clone()),
             }]
         } else {
             // Multi-node mode from config file
@@ -242,7 +244,10 @@ impl AppConfig {
                     host: n.host.clone(),
                     port: n.port,
                     role: n.role,
-                    network: n.network.clone().unwrap_or_else(|| file_config.global.network.clone()),
+                    network: n
+                        .network
+                        .clone()
+                        .unwrap_or_else(|| file_config.global.network.clone()),
                 })
                 .collect()
         };

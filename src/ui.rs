@@ -103,10 +103,9 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
     let status_indicator = if node.metrics.connected { "●" } else { "○" };
 
     let role_badge = match node.role {
-        crate::config::NodeRole::Bp => Span::styled(
-            " [BP] ",
-            Style::default().fg(Color::Magenta).bold(),
-        ),
+        crate::config::NodeRole::Bp => {
+            Span::styled(" [BP] ", Style::default().fg(Color::Magenta).bold())
+        }
         crate::config::NodeRole::Relay => Span::raw(""),
     };
 
