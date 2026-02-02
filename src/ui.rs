@@ -206,13 +206,13 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         Span::raw("  │  "),
         Span::styled("Health: ", Style::default().fg(palette.text_muted)),
         sync_dot,
-        Span::styled("Sync ", Style::default().fg(palette.text_muted)),
+        Span::styled(" Sync  ", Style::default().fg(palette.text_muted)),
         peer_dot,
-        Span::styled("Peers ", Style::default().fg(palette.text_muted)),
+        Span::styled(" Peers  ", Style::default().fg(palette.text_muted)),
         tip_dot,
-        Span::styled("Tip ", Style::default().fg(palette.text_muted)),
+        Span::styled(" Tip  ", Style::default().fg(palette.text_muted)),
         mem_dot,
-        Span::styled("Mem", Style::default().fg(palette.text_muted)),
+        Span::styled(" Mem", Style::default().fg(palette.text_muted)),
     ];
     header_spans.extend(alert_span);
 
