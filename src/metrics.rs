@@ -13,22 +13,12 @@ use tracing::debug;
 pub struct P2PStats {
     /// Whether P2P is enabled on this node
     pub enabled: Option<bool>,
-    /// Number of incoming P2P connections
-    pub incoming_connections: Option<u64>,
-    /// Number of outgoing P2P connections
-    pub outgoing_connections: Option<u64>,
     /// Number of cold peers (not yet known)
     pub cold_peers: Option<u64>,
     /// Number of warm peers (known but not actively used)
     pub warm_peers: Option<u64>,
     /// Number of hot peers (actively used)
     pub hot_peers: Option<u64>,
-    /// Number of unidirectional peer connections
-    pub unidirectional_peers: Option<u64>,
-    /// Number of bidirectional peer connections
-    pub bidirectional_peers: Option<u64>,
-    /// Number of full duplex peer connections
-    pub duplex_peers: Option<u64>,
 }
 
 /// Detected node implementation type
@@ -311,15 +301,9 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                     }
                 }
 
-                // P2P (peer-to-peer) network metrics (legacy naming)
+                // P2P (peer-to-peer) network metrics
                 "cardano_node_metrics_p2p_enabled_int" => {
                     metrics.p2p.enabled = Some(value > 0.0);
-                }
-                "cardano_node_metrics_p2p_incomingConns_int" => {
-                    metrics.p2p.incoming_connections = Some(value as u64);
-                }
-                "cardano_node_metrics_p2p_outgoingConns_int" => {
-                    metrics.p2p.outgoing_connections = Some(value as u64);
                 }
                 "cardano_node_metrics_p2p_coldPeersCount_int" => {
                     metrics.p2p.cold_peers = Some(value as u64);
@@ -329,15 +313,6 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
                 "cardano_node_metrics_p2p_hotPeersCount_int" => {
                     metrics.p2p.hot_peers = Some(value as u64);
-                }
-                "cardano_node_metrics_p2p_unidirectionalPeersCount_int" => {
-                    metrics.p2p.unidirectional_peers = Some(value as u64);
-                }
-                "cardano_node_metrics_p2p_bidirectionalPeersCount_int" => {
-                    metrics.p2p.bidirectional_peers = Some(value as u64);
-                }
-                "cardano_node_metrics_p2p_fullDuplexPeersCount_int" => {
-                    metrics.p2p.duplex_peers = Some(value as u64);
                 }
 
                 // Peer selection metrics
@@ -550,24 +525,22 @@ cardano_node_metrics_operationalCertificateExpiryKESPeriod_int 62
     fn test_parse_p2p_metrics() {
         let text = r#"
 cardano_node_metrics_p2p_enabled_int 1
-cardano_node_metrics_p2p_incomingConns_int 10
-cardano_node_metrics_p2p_outgoingConns_int 8
 cardano_node_metrics_p2p_coldPeersCount_int 5
 cardano_node_metrics_p2p_warmPeersCount_int 15
 cardano_node_metrics_p2p_hotPeersCount_int 12
-cardano_node_metrics_p2p_unidirectionalPeersCount_int 8
-cardano_node_metrics_p2p_bidirectionalPeersCount_int 20
-cardano_node_metrics_p2p_fullDuplexPeersCount_int 10
+cardano_node_metrics_connectionManager_incomingConns 10
+cardano_node_metrics_connectionManager_outgoingConns 8
+cardano_node_metrics_connectionManager_duplexConns 20
+cardano_node_metrics_connectionManager_unidirectionalConns 8
 "#;
         let metrics = parse_prometheus_metrics(text);
         assert_eq!(metrics.p2p.enabled, Some(true));
-        assert_eq!(metrics.p2p.incoming_connections, Some(10));
-        assert_eq!(metrics.p2p.outgoing_connections, Some(8));
         assert_eq!(metrics.p2p.cold_peers, Some(5));
         assert_eq!(metrics.p2p.warm_peers, Some(15));
         assert_eq!(metrics.p2p.hot_peers, Some(12));
-        assert_eq!(metrics.p2p.unidirectional_peers, Some(8));
-        assert_eq!(metrics.p2p.bidirectional_peers, Some(20));
-        assert_eq!(metrics.p2p.duplex_peers, Some(10));
+        assert_eq!(metrics.incoming_connections, Some(10));
+        assert_eq!(metrics.outgoing_connections, Some(8));
+        assert_eq!(metrics.full_duplex_connections, Some(20));
+        assert_eq!(metrics.unidirectional_connections, Some(8));
     }
 }

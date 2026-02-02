@@ -460,18 +460,6 @@ fn draw_peer_breakdown(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
             Cell::from("Hot Peers"),
             Cell::from(format_metric_u64(p2p.hot_peers)),
         ]),
-        Row::new(vec![
-            Cell::from("Duplex Peers"),
-            Cell::from(format_metric_u64(p2p.duplex_peers)),
-        ]),
-        Row::new(vec![
-            Cell::from("Bidirectional"),
-            Cell::from(format_metric_u64(p2p.bidirectional_peers)),
-        ]),
-        Row::new(vec![
-            Cell::from("Unidirectional"),
-            Cell::from(format_metric_u64(p2p.unidirectional_peers)),
-        ]),
     ];
 
     let table = Table::new(
