@@ -27,7 +27,7 @@ This document describes the complete Terminal User Interface (TUI) design for sv
 
 ---
 
-## 🎨 Current Layout (v0.1.20+)
+## 🎨 Current Layout (v0.1.21+)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -168,22 +168,19 @@ Focus on system health and block production.
 
 ---
 
-### Sparklines Section (Bottom, 5 lines)
-**Two equal columns (50% / 50%)**
+### Memory Gauge (Top Right, 3 lines)
+**Width:** 40% of terminal width (next to epoch progress)
 
-#### Left: Block Height Sparkline
-- **X-axis:** Last 60 data points (refresh every 2s = 2 minutes)
-- **Y-axis:** Normalized to full height
-- **Color:** Primary theme color (cyan, teal, purple, etc.)
-- **Title:** `Blocks (0.15/min)` - shows blocks per minute
-- **Height:** 5 lines (1 border + 3 sparkline + 1 title/label)
+**Content:**
+- Horizontal progress gauge showing memory usage ratio
+- Label shows current memory in MB/GB
+- Color: Healthy (green) → Warning (yellow) → Critical (red)
+- Calculation: Used / Total heap
 
-#### Right: Memory Usage Sparkline
-- **X-axis:** Last 60 data points (2 minutes of history)
-- **Y-axis:** Normalized to full height
-- **Color:** Healthy indicator color (green) with health-based variation
-- **Title:** `Memory`
-- **Height:** 5 lines (1 border + 3 sparkline + 1 title/label)
+**Significance:**
+- Real-time memory pressure indicator
+- Health coloring shows when approaching limits
+- Side-by-side with epoch progress for quick visual scan
 
 ---
 
@@ -508,6 +505,7 @@ When making TUI changes:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v0.1.21 | 2026-02-02 | Block sparkline removed, memory gauge added (60/40 with epoch) |
 | v0.1.20 | 2026-02-02 | Epoch progress moved to full-width section below header |
 | v0.1.19 | 2026-02-02 | Side-by-side sparklines, optimized height, cleaner layout |
 | v0.1.18 | 2026-02-02 | Code review fixes, no TUI changes |
