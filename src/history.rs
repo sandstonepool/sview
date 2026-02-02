@@ -37,6 +37,7 @@ impl MetricHistory {
     }
 
     /// Get the current (most recent) value
+    #[allow(dead_code)]
     pub fn current(&self) -> Option<f64> {
         self.values.back().copied()
     }
@@ -52,6 +53,7 @@ impl MetricHistory {
     }
 
     /// Get the average value in the history
+    #[allow(dead_code)]
     pub fn avg(&self) -> Option<f64> {
         if self.values.is_empty() {
             None
@@ -76,11 +78,13 @@ impl MetricHistory {
     }
 
     /// Check if the history is empty
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
 
     /// Clear all stored values
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.values.clear();
     }

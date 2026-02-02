@@ -48,12 +48,14 @@ pub struct NodeMetrics {
     /// CPU usage percentage (if available)
     pub cpu_seconds: Option<f64>,
     /// Node uptime in seconds
+    #[allow(dead_code)]
     pub uptime_seconds: Option<f64>,
     /// Transactions in mempool
     pub mempool_txs: Option<u64>,
     /// Mempool bytes
     pub mempool_bytes: Option<u64>,
     /// Node version (if available)
+    #[allow(dead_code)]
     pub version: Option<String>,
     /// Sync progress percentage (0-100)
     pub sync_progress: Option<f64>,
@@ -210,8 +212,7 @@ mod tests {
 
     #[test]
     fn test_parse_metric_line_with_labels() {
-        let (name, value) =
-            parse_metric_line("http_requests_total{method=\"GET\"} 1234").unwrap();
+        let (name, value) = parse_metric_line("http_requests_total{method=\"GET\"} 1234").unwrap();
         assert_eq!(name, "http_requests_total");
         assert_eq!(value, 1234.0);
     }

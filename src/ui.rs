@@ -65,8 +65,8 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
         ),
     ]);
 
-    let header = Paragraph::new(header_text)
-        .block(Block::default().borders(Borders::ALL).title(" sview "));
+    let header =
+        Paragraph::new(header_text).block(Block::default().borders(Borders::ALL).title(" sview "));
 
     frame.render_widget(header, area);
 }
@@ -233,11 +233,7 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App) {
         rows,
         [Constraint::Percentage(50), Constraint::Percentage(50)],
     )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Resources "),
-    );
+    .block(Block::default().borders(Borders::ALL).title(" Resources "));
 
     frame.render_widget(table, area);
 }
@@ -247,10 +243,9 @@ fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App) {
     let data = app.history.memory_used.as_slice();
 
     // Normalize to show relative changes
-    let normalized: Vec<u64> = if let (Some(min), Some(max)) = (
-        app.history.memory_used.min(),
-        app.history.memory_used.max(),
-    ) {
+    let normalized: Vec<u64> = if let (Some(min), Some(max)) =
+        (app.history.memory_used.min(), app.history.memory_used.max())
+    {
         let range = (max - min).max(1.0);
         data.iter()
             .map(|v| ((*v as f64 - min) / range * 100.0) as u64)
@@ -274,10 +269,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     let footer_text = if let Some(ref error) = app.last_error {
         Line::from(vec![
             Span::styled(" Error: ", Style::default().fg(Color::Red).bold()),
-            Span::styled(
-                truncate_string(error, 60),
-                Style::default().fg(Color::Red),
-            ),
+            Span::styled(truncate_string(error, 60), Style::default().fg(Color::Red)),
         ])
     } else {
         Line::from(vec![
@@ -288,10 +280,7 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
             Span::styled("[?] ", Style::default().fg(Color::Yellow)),
             Span::raw("Help  "),
             Span::raw("│ "),
-            Span::styled(
-                format!("{}", endpoint),
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled(endpoint, Style::default().fg(Color::DarkGray)),
         ])
     };
 
@@ -397,7 +386,7 @@ fn health_to_color(status: HealthStatus) -> Color {
 
 fn format_metric_u64(value: Option<u64>) -> String {
     value
-        .map(|v| format_number(v))
+        .map(format_number)
         .unwrap_or_else(|| "—".to_string())
 }
 
