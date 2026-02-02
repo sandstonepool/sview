@@ -12,6 +12,7 @@ mod geoip;
 mod history;
 mod metrics;
 mod peers;
+mod sockets;
 mod storage;
 mod themes;
 mod ui;
@@ -93,11 +94,24 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         continue;
                     }
 
+                    // In peers mode, handle specific keys
+                    if app.mode == AppMode::Peers {
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('p') => {
+                                app.toggle_peers();
+                            }
+                            KeyCode::Char('r') => app.refresh_peers(),
+                            _ => {}
+                        }
+                        continue;
+                    }
+
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                         KeyCode::Char('r') => app.fetch_all_metrics().await,
                         KeyCode::Char('?') => app.toggle_help(),
                         KeyCode::Char('t') => app.cycle_theme(),
+                        KeyCode::Char('p') => app.toggle_peers(),
 
                         // Node switching
                         KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {

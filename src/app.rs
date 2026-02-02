@@ -7,6 +7,7 @@ use crate::config::{AppConfig, Config, NodeRole, NodeRuntimeConfig};
 use crate::history::MetricsHistory;
 use crate::metrics::{MetricsClient, NodeMetrics};
 use crate::peers::PeerMonitor;
+use crate::sockets::PeerConnection;
 use crate::storage::StorageManager;
 use crate::themes::Theme;
 use std::time::Instant;
@@ -18,6 +19,8 @@ pub enum AppMode {
     #[default]
     Normal,
     Help,
+    /// Detailed peer list view
+    Peers,
 }
 
 /// Health status indicators
@@ -54,6 +57,8 @@ pub struct NodeState {
     last_block_height: Option<u64>,
     /// Time when block height last changed
     last_block_time: Option<Instant>,
+    /// Discovered peer connections (from socket inspection)
+    pub peer_connections: Vec<PeerConnection>,
 }
 
 impl NodeState {
@@ -104,7 +109,13 @@ impl NodeState {
             last_fetch_time: None,
             last_block_height: None,
             last_block_time: None,
+            peer_connections: Vec::new(),
         }
+    }
+
+    /// Refresh peer connections via socket inspection
+    pub fn refresh_peer_connections(&mut self) {
+        self.peer_connections = crate::sockets::discover_peers(self.config.prom_port);
     }
 
     /// Fetch metrics from this node
@@ -383,8 +394,26 @@ impl App {
     pub fn toggle_help(&mut self) {
         self.mode = match self.mode {
             AppMode::Normal => AppMode::Help,
+            AppMode::Help | AppMode::Peers => AppMode::Normal,
+        };
+    }
+
+    /// Toggle peers view
+    pub fn toggle_peers(&mut self) {
+        self.mode = match self.mode {
+            AppMode::Normal => {
+                // Refresh peer connections when entering peers view
+                self.nodes[self.selected_node].refresh_peer_connections();
+                AppMode::Peers
+            }
+            AppMode::Peers => AppMode::Normal,
             AppMode::Help => AppMode::Normal,
         };
+    }
+
+    /// Refresh peer connections for current node
+    pub fn refresh_peers(&mut self) {
+        self.nodes[self.selected_node].refresh_peer_connections();
     }
 
     /// Cycle to the next color theme

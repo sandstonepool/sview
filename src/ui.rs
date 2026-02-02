@@ -57,6 +57,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if app.mode == AppMode::Help {
         draw_help_popup(frame, area, app.is_multi_node(), &palette);
     }
+
+    // Draw peers overlay if in peers mode
+    if app.mode == AppMode::Peers {
+        draw_peers_view(frame, area, app, &palette);
+    }
 }
 
 /// Draw the node selection tabs
@@ -698,6 +703,10 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: 
             Span::raw("Cycle color theme"),
         ]),
         Line::from(vec![
+            Span::styled("  p         ", Style::default().fg(palette.tertiary)),
+            Span::raw("Show peer connections"),
+        ]),
+        Line::from(vec![
             Span::styled("  ?         ", Style::default().fg(palette.tertiary)),
             Span::raw("Toggle this help"),
         ]),
@@ -786,6 +795,178 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+// ============================================================================
+// Peers view
+// ============================================================================
+
+/// Draw the detailed peer list view
+fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // Use 90% of screen for peer list
+    let popup_area = centered_rect(90, 85, area);
+
+    // Clear the background
+    frame.render_widget(Clear, popup_area);
+
+    let node = app.current_node();
+    let peers = &node.peer_connections;
+
+    // Build table rows
+    let mut rows: Vec<Row> = Vec::new();
+
+    // Sort peers: incoming first, then by RTT
+    let mut sorted_peers = peers.clone();
+    sorted_peers.sort_by(|a, b| {
+        // Sort by direction first (incoming first)
+        match (a.incoming, b.incoming) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => {
+                // Then by RTT (lower is better)
+                let a_rtt = a.rtt_ms.unwrap_or(f64::MAX);
+                let b_rtt = b.rtt_ms.unwrap_or(f64::MAX);
+                a_rtt
+                    .partial_cmp(&b_rtt)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }
+        }
+    });
+
+    if sorted_peers.is_empty() {
+        rows.push(Row::new(vec![
+            Cell::from(""),
+            Cell::from(Span::styled(
+                "No peer connections found. Press 'r' to refresh.",
+                Style::default().fg(palette.text_muted).italic(),
+            )),
+            Cell::from(""),
+            Cell::from(""),
+            Cell::from(""),
+            Cell::from(""),
+        ]));
+    } else {
+        for peer in &sorted_peers {
+            let dir_style = if peer.incoming {
+                Style::default().fg(palette.primary)
+            } else {
+                Style::default().fg(palette.secondary)
+            };
+
+            let rtt_str = match peer.rtt_ms {
+                Some(rtt) if rtt < 50.0 => format!("{:.1}ms", rtt),
+                Some(rtt) if rtt < 100.0 => format!("{:.1}ms", rtt),
+                Some(rtt) => format!("{:.0}ms", rtt),
+                None => "—".to_string(),
+            };
+
+            let rtt_style = match peer.rtt_ms {
+                Some(rtt) if rtt < 50.0 => Style::default().fg(palette.healthy),
+                Some(rtt) if rtt < 100.0 => Style::default().fg(palette.warning),
+                Some(_) => Style::default().fg(palette.critical),
+                None => Style::default().fg(palette.text_muted),
+            };
+
+            let queue_str = if peer.recv_q > 0 || peer.send_q > 0 {
+                format!("R:{} S:{}", peer.recv_q, peer.send_q)
+            } else {
+                "0".to_string()
+            };
+
+            rows.push(Row::new(vec![
+                Cell::from(Span::styled(peer.direction_str().to_string(), dir_style)),
+                Cell::from(Span::styled(
+                    peer.ip.clone(),
+                    Style::default().fg(palette.text),
+                )),
+                Cell::from(Span::styled(
+                    peer.port.to_string(),
+                    Style::default().fg(palette.text_muted),
+                )),
+                Cell::from(Span::styled(rtt_str, rtt_style)),
+                Cell::from(Span::styled(
+                    peer.state.clone(),
+                    Style::default().fg(palette.text_muted),
+                )),
+                Cell::from(Span::styled(
+                    queue_str,
+                    Style::default().fg(palette.text_muted),
+                )),
+            ]));
+        }
+    }
+
+    // Summary line
+    let incoming_count = peers.iter().filter(|p| p.incoming).count();
+    let outgoing_count = peers.iter().filter(|p| !p.incoming).count();
+    let avg_rtt: f64 = {
+        let rtts: Vec<f64> = peers.iter().filter_map(|p| p.rtt_ms).collect();
+        if rtts.is_empty() {
+            0.0
+        } else {
+            rtts.iter().sum::<f64>() / rtts.len() as f64
+        }
+    };
+
+    let title = format!(
+        " Peer Connections — {} total (IN: {} OUT: {}) — Avg RTT: {:.1}ms ",
+        peers.len(),
+        incoming_count,
+        outgoing_count,
+        avg_rtt
+    );
+
+    // Create header row
+    let header = Row::new(vec![
+        Cell::from(Span::styled(
+            "DIR",
+            Style::default().fg(palette.primary).bold(),
+        )),
+        Cell::from(Span::styled(
+            "IP ADDRESS",
+            Style::default().fg(palette.primary).bold(),
+        )),
+        Cell::from(Span::styled(
+            "PORT",
+            Style::default().fg(palette.primary).bold(),
+        )),
+        Cell::from(Span::styled(
+            "RTT",
+            Style::default().fg(palette.primary).bold(),
+        )),
+        Cell::from(Span::styled(
+            "STATE",
+            Style::default().fg(palette.primary).bold(),
+        )),
+        Cell::from(Span::styled(
+            "QUEUE",
+            Style::default().fg(palette.primary).bold(),
+        )),
+    ])
+    .style(Style::default())
+    .bottom_margin(1);
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(4),  // DIR
+            Constraint::Min(20),    // IP
+            Constraint::Length(6),  // PORT
+            Constraint::Length(10), // RTT
+            Constraint::Length(12), // STATE
+            Constraint::Length(12), // QUEUE
+        ],
+    )
+    .header(header)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .title_bottom(Line::from(" [p] close | [r] refresh ").centered())
+            .border_style(Style::default().fg(palette.primary)),
+    );
+
+    frame.render_widget(table, popup_area);
 }
 
 // ============================================================================
