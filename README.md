@@ -122,10 +122,28 @@ Use `Tab` or number keys `1-9` to switch between nodes.
 | `q`, `Esc` | Quit |
 | `r` | Force refresh metrics |
 | `?` | Toggle help |
+| `t` | Cycle color theme |
 | `Tab` | Next node (multi-node mode) |
 | `Shift+Tab` | Previous node (multi-node mode) |
 | `1-9` | Select node by number (multi-node mode) |
 | `←` `→` | Switch between nodes (multi-node mode) |
+
+### Color Themes
+
+sview includes 7 color themes optimized for extended terminal viewing:
+
+**Dark themes** (for dark terminals):
+- Dark Default — Cool blues and cyans
+- Dark Warm — Coral and peach tones
+- Dark Purple — Purple and magenta pastels
+- Dark Teal — Teal and mint greens
+
+**Light themes** (for light terminals):
+- Light Default — Soft blues on light background
+- Light Warm — Peachy pastels
+- Light Cool — Minty greens
+
+Press `t` to cycle through themes. Your preference is saved to the config file.
 
 ## Configuration
 
