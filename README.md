@@ -267,6 +267,16 @@ See [METRICS_GUIDE.md](METRICS_GUIDE.md) for detailed troubleshooting.
 - Terminal with Unicode support (minimum 80x24 recommended)
 - Network access to Cardano node's Prometheus endpoint (default: localhost:12798)
 
+## Documentation
+
+Comprehensive documentation is available in the [docs/](docs/) folder:
+
+- **[Getting Started](docs/GETTING_STARTED.md)** — Quick start guide
+- **[Configuration Guide](docs/CONFIGURATION.md)** — Config file and multi-node setup
+- **[User Guide](docs/USER_GUIDE.md)** — Complete feature documentation
+- **[Keyboard Shortcuts](docs/KEYBOARD_SHORTCUTS.md)** — Quick reference
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** — Common issues and solutions
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE) for details.
