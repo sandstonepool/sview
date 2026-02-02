@@ -6,6 +6,21 @@ A TUI for monitoring Cardano nodes, written in Rust.
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 [![CI](https://github.com/sandstonepool/sview/actions/workflows/ci.yml/badge.svg)](https://github.com/sandstonepool/sview/actions/workflows/ci.yml)
 
+## ⚠️ Important Disclaimer
+
+**This tool was entirely created using AI coding agents.** While the code has been tested and reviewed, you should be aware of the following:
+
+- **Use at your own risk** — This software is provided as-is. The developers are not responsible for any losses, damage, or issues arising from its use.
+- **Code review recommended** — Before running this tool in a production environment, we strongly recommend having the code reviewed by qualified Rust developers familiar with Cardano infrastructure.
+- **Security considerations** — The tool connects to your node's Prometheus metrics endpoint. Ensure your Prometheus port is not exposed to untrusted networks.
+- **Monitoring only** — This tool is read-only and does not send commands to your node. However, information displayed comes from your node's metrics.
+- **Test thoroughly** — Run sview in a non-critical environment first to ensure it works as expected for your setup.
+- **No warranty** — This software comes with no warranty, express or implied. Use it only if you understand and accept these risks.
+
+If you discover a security issue, please report it responsibly to the project maintainers.
+
+---
+
 ## Overview
 
 sview is a terminal-based monitoring tool for Cardano nodes. It provides real-time
