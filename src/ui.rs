@@ -6,7 +6,8 @@ use crate::app::{App, AppMode, HealthStatus};
 use crate::themes::Palette;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Table, Tabs, Wrap},
+    symbols,
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
 };
 
 /// Main draw function - renders the entire UI
@@ -20,18 +21,18 @@ pub fn draw(frame: &mut Frame, app: &App) {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3), // Node tabs
-                Constraint::Length(3), // Header
-                Constraint::Min(15),   // Main content (increased for more metrics)
-                Constraint::Length(3), // Footer/status
+                Constraint::Length(3), // Header with status indicators
+                Constraint::Min(10),   // Main content
+                Constraint::Length(2), // Footer/status
             ])
             .split(area)
     } else {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3), // Header
-                Constraint::Min(15),   // Main content (increased for more metrics)
-                Constraint::Length(3), // Footer/status
+                Constraint::Length(3), // Header with status indicators
+                Constraint::Min(10),   // Main content
+                Constraint::Length(2), // Footer/status
             ])
             .split(area)
     };
@@ -44,11 +45,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
         (chunks[0], chunks[1], chunks[2])
     };
 
-    // Draw header
+    // Draw header with health indicators
     draw_header(frame, header_area, app, &palette);
 
-    // Draw main content - with improved 3-column layout
-    draw_main(frame, main_area, app, &palette);
+    // Draw main content - 2-row layout with sparklines
+    draw_main_content(frame, main_area, app, &palette);
 
     // Draw footer
     draw_footer(frame, footer_area, app, &palette);
@@ -69,13 +70,16 @@ fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
             let health_color = health_to_color(node.overall_health(), palette);
             let indicator = if node.metrics.connected { "●" } else { "○" };
             let role_suffix = match node.role {
-                crate::config::NodeRole::Bp => " [BP]",
+                crate::config::NodeRole::Bp => " BP",
                 crate::config::NodeRole::Relay => "",
             };
             Line::from(vec![
                 Span::styled(indicator, Style::default().fg(health_color)),
                 Span::raw(" "),
-                Span::raw(format!("{}{}", node.config.node_name, role_suffix)),
+                Span::styled(
+                    format!("{}{}", node.config.node_name, role_suffix),
+                    Style::default().fg(palette.text),
+                ),
                 Span::styled(
                     format!(" [{}]", i + 1),
                     Style::default().fg(palette.text_muted),
@@ -103,223 +107,153 @@ fn draw_node_tabs(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     frame.render_widget(tabs, area);
 }
 
-/// Draw the header section with node name and status
+/// Draw the header section with health indicators
 fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
-    let health_color = health_to_color(node.overall_health(), palette);
-    let status_indicator = if node.metrics.connected { "●" } else { "○" };
+    let metrics = &node.metrics;
+
+    // Build status line with key health indicators
+    let sync_health = node.sync_health();
+    let peer_health = node.peer_health();
+    let tip_health = node.tip_health();
+    let mem_health = node.memory_health();
+
+    let status_indicator = if node.metrics.connected {
+        Span::styled("● ONLINE", Style::default().fg(palette.healthy).bold())
+    } else {
+        Span::styled("○ OFFLINE", Style::default().fg(palette.critical).bold())
+    };
 
     let role_badge = match node.role {
-        crate::config::NodeRole::Bp => {
-            Span::styled(" [BP] ", Style::default().fg(palette.secondary).bold())
+        crate::config::NodeRole::Bp => Span::styled(
+            " [BLOCK PRODUCER] ",
+            Style::default().fg(palette.secondary).bold(),
+        ),
+        crate::config::NodeRole::Relay => {
+            Span::styled(" [RELAY] ", Style::default().fg(palette.tertiary))
         }
-        crate::config::NodeRole::Relay => Span::raw(""),
     };
+
+    // Quick health indicators
+    let sync_dot = Span::styled(
+        "●",
+        Style::default().fg(health_to_color(sync_health, palette)),
+    );
+    let peer_dot = Span::styled(
+        "●",
+        Style::default().fg(health_to_color(peer_health, palette)),
+    );
+    let tip_dot = Span::styled(
+        "●",
+        Style::default().fg(health_to_color(tip_health, palette)),
+    );
+    let mem_dot = Span::styled(
+        "●",
+        Style::default().fg(health_to_color(mem_health, palette)),
+    );
+
+    // Format key metrics for header
+    let block_str = metrics
+        .block_height
+        .map(format_number)
+        .unwrap_or_else(|| "—".to_string());
+    let epoch_str = metrics
+        .epoch
+        .map(|e| format!("E{}", e))
+        .unwrap_or_else(|| "—".to_string());
+    let peers_str = metrics
+        .peers_connected
+        .map(|p| p.to_string())
+        .unwrap_or_else(|| "—".to_string());
 
     let header_text = Line::from(vec![
         Span::styled(
             format!(" {} ", node.config.node_name),
-            Style::default().bold().fg(palette.text),
+            Style::default().bold().fg(palette.primary),
         ),
         role_badge,
-        Span::styled(status_indicator, Style::default().fg(health_color)),
-        Span::raw(" "),
-        Span::styled(
-            node.status_text(),
-            Style::default().fg(health_color).italic(),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            format!("Network: {}", node.config.network),
-            Style::default().fg(palette.primary),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            format!("Node: {}", node.metrics.node_type),
-            Style::default().fg(palette.tertiary),
-        ),
-        Span::raw(" │ "),
-        Span::styled(
-            format!(" [{}] ", app.theme.display_name()),
-            Style::default().fg(palette.text_muted),
-        ),
+        status_indicator,
+        Span::raw("  │  "),
+        Span::styled("Block: ", Style::default().fg(palette.text_muted)),
+        Span::styled(block_str, Style::default().fg(palette.text)),
+        Span::raw("  "),
+        Span::styled(epoch_str, Style::default().fg(palette.tertiary)),
+        Span::raw("  │  "),
+        Span::styled("Peers: ", Style::default().fg(palette.text_muted)),
+        Span::styled(peers_str, Style::default().fg(palette.text)),
+        Span::raw("  │  "),
+        Span::styled("Health: ", Style::default().fg(palette.text_muted)),
+        sync_dot,
+        Span::styled("Sync ", Style::default().fg(palette.text_muted)),
+        peer_dot,
+        Span::styled("Peers ", Style::default().fg(palette.text_muted)),
+        tip_dot,
+        Span::styled("Tip ", Style::default().fg(palette.text_muted)),
+        mem_dot,
+        Span::styled("Mem", Style::default().fg(palette.text_muted)),
     ]);
 
     let header = Paragraph::new(header_text).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" sview ")
+            .title(format!(" sview — {} ", node.config.network))
             .border_style(Style::default().fg(palette.border)),
     );
 
     frame.render_widget(header, area);
 }
 
-/// Draw the main content area with metrics
-fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Split into: epoch/memory gauge, metrics
+/// Draw the main content area
+fn draw_main_content(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // Two-row layout: gauges on top, metrics + sparklines below
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Epoch progress + memory gauge (side-by-side)
-            Constraint::Min(15),   // Metrics section (3 columns)
+            Constraint::Length(3), // Progress gauges
+            Constraint::Min(8),    // Metrics and sparklines
         ])
         .split(area);
 
-    // Epoch progress and memory gauge (side-by-side, full width)
-    draw_epoch_and_memory_section(frame, chunks[0], app, palette);
+    // Top row: Epoch progress + Sync + Memory gauges
+    draw_gauge_row(frame, chunks[0], app, palette);
 
-    // Metrics section: 3-column layout
-    draw_metrics_section(frame, chunks[1], app, palette);
+    // Bottom row: Metrics tables + Sparklines
+    draw_metrics_and_sparklines(frame, chunks[1], app, palette);
 }
 
-/// Draw epoch progress and memory gauge side-by-side
-fn draw_epoch_and_memory_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(area);
-
-    draw_epoch_progress(frame, chunks[0], app, palette);
-    draw_memory_gauge(frame, chunks[1], app, palette);
-}
-
-/// Draw the metrics section (chain, network, resources in 3 columns)
-fn draw_metrics_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw the gauge row (epoch, sync, memory)
+fn draw_gauge_row(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
+            Constraint::Percentage(50), // Epoch progress
+            Constraint::Percentage(25), // Sync progress
+            Constraint::Percentage(25), // Memory usage
         ])
         .split(area);
 
-    // Left column: Chain Metrics
-    draw_chain_metrics_compact(frame, chunks[0], app, palette);
-
-    // Middle column: Network & Peer Metrics
-    draw_network_panel(frame, chunks[1], app, palette);
-
-    // Right column: Resource & System Metrics
-    draw_resource_metrics_compact(frame, chunks[2], app, palette);
-}
-
-/// Draw compact chain metrics (epoch gauge moved to full-width section)
-fn draw_chain_metrics_compact(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    draw_chain_metrics(frame, area, app, palette);
-}
-
-/// Draw chain metrics table
-fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let node = app.current_node();
-    let metrics = &node.metrics;
-    let sync_health = node.sync_health();
-    let peer_health = node.peer_health();
-    let kes_health = node.kes_health();
-    let tip_health = node.tip_health();
-
-    let mut rows = vec![
-        Row::new(vec![
-            Cell::from("Block Height"),
-            Cell::from(format_metric_u64(metrics.block_height)),
-        ]),
-        Row::new(vec![
-            Cell::from(Span::styled(
-                "Tip Age",
-                Style::default().fg(health_to_color(tip_health, palette)),
-            )),
-            Cell::from(Span::styled(
-                format_tip_age(node.tip_age_secs()),
-                Style::default().fg(health_to_color(tip_health, palette)),
-            )),
-        ]),
-        Row::new(vec![
-            Cell::from("Slot"),
-            Cell::from(format_metric_u64(metrics.slot_num)),
-        ]),
-        Row::new(vec![
-            Cell::from("Epoch"),
-            Cell::from(format_epoch_slot(metrics.epoch, metrics.slot_in_epoch)),
-        ]),
-        Row::new(vec![
-            Cell::from(Span::styled(
-                "Sync Progress",
-                Style::default().fg(health_to_color(sync_health, palette)),
-            )),
-            Cell::from(Span::styled(
-                format_sync_progress(metrics.sync_progress),
-                Style::default().fg(health_to_color(sync_health, palette)),
-            )),
-        ]),
-        Row::new(vec![
-            Cell::from("Chain Density"),
-            Cell::from(format_density(metrics.density)),
-        ]),
-        Row::new(vec![
-            Cell::from("TX Processed"),
-            Cell::from(format_metric_u64(metrics.tx_processed)),
-        ]),
-        Row::new(vec![
-            Cell::from("Forks"),
-            Cell::from(format_metric_u64(metrics.forks)),
-        ]),
-        Row::new(vec![
-            Cell::from(Span::styled(
-                "Connected Peers",
-                Style::default().fg(health_to_color(peer_health, palette)),
-            )),
-            Cell::from(Span::styled(
-                format_metric_u64(metrics.peers_connected),
-                Style::default().fg(health_to_color(peer_health, palette)),
-            )),
-        ]),
-    ];
-
-    // Add KES row only if KES metrics are available (block producer)
-    if metrics.kes_remaining.is_some() {
-        rows.push(Row::new(vec![
-            Cell::from(Span::styled(
-                "KES Remaining",
-                Style::default().fg(health_to_color(kes_health, palette)),
-            )),
-            Cell::from(Span::styled(
-                format_kes_remaining(metrics.kes_remaining),
-                Style::default().fg(health_to_color(kes_health, palette)),
-            )),
-        ]));
-    }
-
-    let table = Table::new(
-        rows,
-        [Constraint::Percentage(50), Constraint::Percentage(50)],
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Chain Status ")
-            .border_style(Style::default().fg(palette.border)),
-    );
-
-    frame.render_widget(table, area);
+    draw_epoch_gauge(frame, chunks[0], app, palette);
+    draw_sync_gauge(frame, chunks[1], app, palette);
+    draw_memory_gauge(frame, chunks[2], app, palette);
 }
 
 /// Draw epoch progress gauge
-fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+fn draw_epoch_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let progress = node.epoch_progress().unwrap_or(0.0);
     let time_remaining = node.epoch_time_remaining();
 
-    let label = match time_remaining {
-        Some(secs) => format!(
-            "{:.1}% — {} remaining",
+    let label = match (node.metrics.epoch, time_remaining) {
+        (Some(epoch), Some(secs)) => format!(
+            "Epoch {} — {:.1}% — {} left",
+            epoch,
             progress,
             format_time_remaining(secs)
         ),
-        None => format!("{:.1}%", progress),
+        (Some(epoch), None) => format!("Epoch {} — {:.1}%", epoch, progress),
+        _ => format!("{:.1}%", progress),
     };
 
-    // Color based on how close to epoch end
     let gauge_color = match progress {
         p if p >= 95.0 => palette.warning,
         p if p >= 80.0 => palette.primary,
@@ -335,6 +269,39 @@ fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
         )
         .gauge_style(Style::default().fg(gauge_color).bg(Color::DarkGray))
         .ratio(progress / 100.0)
+        .label(Span::styled(
+            label,
+            Style::default().fg(palette.text).bold(),
+        ));
+
+    frame.render_widget(gauge, area);
+}
+
+/// Draw sync progress gauge
+fn draw_sync_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let progress = node.metrics.sync_progress.unwrap_or(0.0);
+    let sync_health = node.sync_health();
+
+    let label = if progress >= 99.9 {
+        "Synced ✓".to_string()
+    } else {
+        format!("{:.2}%", progress)
+    };
+
+    let gauge = Gauge::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Sync ")
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .gauge_style(
+            Style::default()
+                .fg(health_to_color(sync_health, palette))
+                .bg(Color::DarkGray),
+        )
+        .ratio((progress / 100.0).min(1.0))
         .label(Span::styled(
             label,
             Style::default().fg(palette.text).bold(),
@@ -367,7 +334,11 @@ fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
                 .title(" Memory ")
                 .border_style(Style::default().fg(palette.border)),
         )
-        .gauge_style(Style::default().fg(health_to_color(memory_health, palette)))
+        .gauge_style(
+            Style::default()
+                .fg(health_to_color(memory_health, palette))
+                .bg(Color::DarkGray),
+        )
         .ratio(ratio)
         .label(Span::styled(
             label,
@@ -377,167 +348,87 @@ fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
     frame.render_widget(gauge, area);
 }
 
-/// Draw network and peer metrics panel
-fn draw_network_panel(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
+/// Draw metrics tables and sparklines
+fn draw_metrics_and_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // 3-column layout: Chain | Network | Resources, with sparklines on right
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Length(10), // Connection metrics
-            Constraint::Min(4),     // P2P peer breakdown
+            Constraint::Percentage(30), // Chain metrics
+            Constraint::Percentage(30), // Network metrics
+            Constraint::Percentage(40), // Resources + Sparklines
         ])
         .split(area);
 
-    draw_connection_metrics(frame, chunks[0], app, palette);
-    draw_peer_breakdown(frame, chunks[1], app, palette);
+    draw_chain_metrics(frame, columns[0], app, palette);
+    draw_network_metrics(frame, columns[1], app, palette);
+    draw_resources_with_sparklines(frame, columns[2], app, palette);
 }
 
-/// Draw connection and block fetch metrics
-fn draw_connection_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw chain metrics table
+fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
     let metrics = &node.metrics;
-
-    let rows = vec![
-        Row::new(vec![
-            Cell::from("Incoming"),
-            Cell::from(format_metric_u64(metrics.incoming_connections)),
-        ]),
-        Row::new(vec![
-            Cell::from("Outgoing"),
-            Cell::from(format_metric_u64(metrics.outgoing_connections)),
-        ]),
-        Row::new(vec![
-            Cell::from("Duplex"),
-            Cell::from(format_metric_u64(metrics.full_duplex_connections)),
-        ]),
-        Row::new(vec![
-            Cell::from("Unidirectional"),
-            Cell::from(format_metric_u64(metrics.unidirectional_connections)),
-        ]),
-        Row::new(vec![
-            Cell::from("Block Delay"),
-            Cell::from(format_block_delay(metrics.block_delay_s)),
-        ]),
-        Row::new(vec![
-            Cell::from("Blocks Served"),
-            Cell::from(format_metric_u64(metrics.blocks_served)),
-        ]),
-        Row::new(vec![
-            Cell::from("Blocks Late"),
-            Cell::from(format_metric_u64(metrics.blocks_late)),
-        ]),
-    ];
-
-    let table = Table::new(
-        rows,
-        [Constraint::Percentage(50), Constraint::Percentage(50)],
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Network & Block Fetch ")
-            .border_style(Style::default().fg(palette.border)),
-    );
-
-    frame.render_widget(table, area);
-}
-
-/// Draw P2P peer classification breakdown
-fn draw_peer_breakdown(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let node = app.current_node();
-    let metrics = &node.metrics;
-    let p2p = &metrics.p2p;
-
-    let rows = vec![
-        Row::new(vec![
-            Cell::from("Cold Peers"),
-            Cell::from(format_metric_u64(p2p.cold_peers)),
-        ]),
-        Row::new(vec![
-            Cell::from("Warm Peers"),
-            Cell::from(format_metric_u64(p2p.warm_peers)),
-        ]),
-        Row::new(vec![
-            Cell::from("Hot Peers"),
-            Cell::from(format_metric_u64(p2p.hot_peers)),
-        ]),
-    ];
-
-    let table = Table::new(
-        rows,
-        [Constraint::Percentage(50), Constraint::Percentage(50)],
-    )
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" P2P Peer Classification ")
-            .border_style(Style::default().fg(palette.border)),
-    );
-
-    frame.render_widget(table, area);
-}
-
-/// Draw compact resource metrics (without sparkline)
-fn draw_resource_metrics_compact(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    draw_resource_metrics(frame, area, app, palette);
-}
-
-/// Draw resource/system metrics
-fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let node = app.current_node();
-    let metrics = &node.metrics;
-    let memory_health = node.memory_health();
+    let tip_health = node.tip_health();
+    let kes_health = node.kes_health();
 
     let mut rows = vec![
-        Row::new(vec![
-            Cell::from("Uptime"),
-            Cell::from(format_uptime(metrics.uptime_seconds)),
-        ]),
-        Row::new(vec![
-            Cell::from(Span::styled(
-                "Memory Used",
-                Style::default().fg(health_to_color(memory_health, palette)),
-            )),
-            Cell::from(Span::styled(
-                format_bytes(metrics.memory_used),
-                Style::default().fg(health_to_color(memory_health, palette)),
-            )),
-        ]),
-        Row::new(vec![
-            Cell::from("Memory Heap"),
-            Cell::from(format_bytes(metrics.memory_heap)),
-        ]),
-        Row::new(vec![
-            Cell::from("GC Minor"),
-            Cell::from(format_metric_u64(metrics.gc_minor)),
-        ]),
-        Row::new(vec![
-            Cell::from("GC Major"),
-            Cell::from(format_metric_u64(metrics.gc_major)),
-        ]),
-        Row::new(vec![
-            Cell::from("CPU Time"),
-            Cell::from(format_cpu_ms(metrics.cpu_ms)),
-        ]),
-        Row::new(vec![
-            Cell::from("Mempool TXs"),
-            Cell::from(format_metric_u64(metrics.mempool_txs)),
-        ]),
-        Row::new(vec![
-            Cell::from("Mempool Size"),
-            Cell::from(format_bytes(metrics.mempool_bytes)),
-        ]),
+        create_metric_row(
+            "Block Height",
+            format_metric_u64(metrics.block_height),
+            palette,
+        ),
+        create_health_row(
+            "Tip Age",
+            format_tip_age(node.tip_age_secs()),
+            tip_health,
+            palette,
+        ),
+        create_metric_row("Slot", format_metric_u64(metrics.slot_num), palette),
+        create_metric_row(
+            "Slot in Epoch",
+            format_metric_u64(metrics.slot_in_epoch),
+            palette,
+        ),
+        create_metric_row("Density", format_density(metrics.density), palette),
+        create_metric_row(
+            "TX Processed",
+            format_metric_u64(metrics.tx_processed),
+            palette,
+        ),
+        create_metric_row("Forks", format_metric_u64(metrics.forks), palette),
     ];
 
-    // Add forging metrics if available (block producer)
-    if metrics.blocks_adopted.is_some() || metrics.blocks_didnt_adopt.is_some() {
-        rows.push(Row::new(vec![
-            Cell::from("Blocks Adopted"),
-            Cell::from(format_metric_u64(metrics.blocks_adopted)),
-        ]));
-        rows.push(Row::new(vec![
-            Cell::from("Blocks Failed"),
-            Cell::from(format_metric_u64(metrics.blocks_didnt_adopt)),
-        ]));
+    // Add KES row only if available (block producer)
+    if metrics.kes_remaining.is_some() {
+        rows.push(create_health_row(
+            "KES Remaining",
+            format_kes_remaining(metrics.kes_remaining),
+            kes_health,
+            palette,
+        ));
+    }
+
+    // Add forging metrics if available
+    if metrics.forging_enabled.is_some() {
+        let forging_str = if metrics.forging_enabled.unwrap_or(false) {
+            "Enabled"
+        } else {
+            "Disabled"
+        };
+        rows.push(create_metric_row(
+            "Forging",
+            forging_str.to_string(),
+            palette,
+        ));
+    }
+
+    if metrics.blocks_adopted.is_some() {
+        rows.push(create_metric_row(
+            "Blocks Forged",
+            format_metric_u64(metrics.blocks_adopted),
+            palette,
+        ));
     }
 
     let table = Table::new(
@@ -547,74 +438,291 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pal
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Resources & Forging ")
+            .title(" Chain ")
             .border_style(Style::default().fg(palette.border)),
     );
 
     frame.render_widget(table, area);
 }
 
-/// Draw memory usage sparkline
-/// Draw the footer with help and status
-fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw network and peer metrics
+fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
-    let endpoint = format!("{}:{}", node.config.prom_host, node.config.prom_port);
+    let metrics = &node.metrics;
+    let peer_health = node.peer_health();
 
-    let footer_text = if let Some(ref error) = node.last_error {
-        Line::from(vec![
-            Span::styled(" Error: ", Style::default().fg(palette.critical).bold()),
-            Span::styled(
-                truncate_string(error, 60),
-                Style::default().fg(palette.critical),
-            ),
-        ])
-    } else {
-        let mut spans = vec![
-            Span::styled(" [q] ", Style::default().fg(palette.tertiary)),
-            Span::raw("Quit  "),
-            Span::styled("[r] ", Style::default().fg(palette.tertiary)),
-            Span::raw("Refresh  "),
-            Span::styled("[?] ", Style::default().fg(palette.tertiary)),
-            Span::raw("Help  "),
-            Span::styled("[t] ", Style::default().fg(palette.tertiary)),
-            Span::raw("Theme  "),
-        ];
+    let rows = vec![
+        create_health_row(
+            "Connected",
+            format_metric_u64(metrics.peers_connected),
+            peer_health,
+            palette,
+        ),
+        create_metric_row(
+            "Incoming",
+            format_metric_u64(metrics.incoming_connections),
+            palette,
+        ),
+        create_metric_row(
+            "Outgoing",
+            format_metric_u64(metrics.outgoing_connections),
+            palette,
+        ),
+        create_metric_row(
+            "Duplex",
+            format_metric_u64(metrics.full_duplex_connections),
+            palette,
+        ),
+        create_metric_row(
+            "Unidirectional",
+            format_metric_u64(metrics.unidirectional_connections),
+            palette,
+        ),
+        create_separator_row(palette),
+        create_metric_row(
+            "Hot Peers",
+            format_metric_u64(metrics.p2p.hot_peers),
+            palette,
+        ),
+        create_metric_row(
+            "Warm Peers",
+            format_metric_u64(metrics.p2p.warm_peers),
+            palette,
+        ),
+        create_metric_row(
+            "Cold Peers",
+            format_metric_u64(metrics.p2p.cold_peers),
+            palette,
+        ),
+        create_separator_row(palette),
+        create_metric_row(
+            "Block Delay",
+            format_block_delay(metrics.block_delay_s),
+            palette,
+        ),
+        create_metric_row(
+            "Blocks Served",
+            format_metric_u64(metrics.blocks_served),
+            palette,
+        ),
+    ];
 
-        // Add node switching hints if multi-node
-        if app.is_multi_node() {
-            spans.push(Span::styled(
-                "[Tab] ",
-                Style::default().fg(palette.tertiary),
-            ));
-            spans.push(Span::raw("Next  "));
-            spans.push(Span::styled(
-                "[1-9] ",
-                Style::default().fg(palette.tertiary),
-            ));
-            spans.push(Span::raw("Select  "));
-        }
-
-        spans.push(Span::raw("│ "));
-        spans.push(Span::styled(
-            endpoint,
-            Style::default().fg(palette.text_muted),
-        ));
-
-        Line::from(spans)
-    };
-
-    let footer = Paragraph::new(footer_text).block(
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(55), Constraint::Percentage(45)],
+    )
+    .block(
         Block::default()
             .borders(Borders::ALL)
+            .title(" Network & Peers ")
             .border_style(Style::default().fg(palette.border)),
     );
 
+    frame.render_widget(table, area);
+}
+
+/// Draw resources with sparklines
+fn draw_resources_with_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(8), // Resource metrics
+            Constraint::Min(4),    // Sparklines
+        ])
+        .split(area);
+
+    draw_resource_metrics(frame, chunks[0], app, palette);
+    draw_sparklines(frame, chunks[1], app, palette);
+}
+
+/// Draw resource metrics table
+fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let metrics = &node.metrics;
+    let memory_health = node.memory_health();
+
+    let rows = vec![
+        create_metric_row("Uptime", format_uptime(metrics.uptime_seconds), palette),
+        create_health_row(
+            "Memory Used",
+            format_bytes(metrics.memory_used),
+            memory_health,
+            palette,
+        ),
+        create_metric_row("Memory Heap", format_bytes(metrics.memory_heap), palette),
+        create_metric_row("GC Minor", format_metric_u64(metrics.gc_minor), palette),
+        create_metric_row("GC Major", format_metric_u64(metrics.gc_major), palette),
+        create_metric_row(
+            "Mempool TXs",
+            format_metric_u64(metrics.mempool_txs),
+            palette,
+        ),
+        create_metric_row("Mempool Size", format_bytes(metrics.mempool_bytes), palette),
+    ];
+
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(55), Constraint::Percentage(45)],
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Resources ")
+            .border_style(Style::default().fg(palette.border)),
+    );
+
+    frame.render_widget(table, area);
+}
+
+/// Draw sparklines for historical data
+fn draw_sparklines(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let history = &node.history;
+
+    // Split into two sparklines side by side
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Block height sparkline (show trend)
+    let block_data = history.block_height.as_slice();
+    if !block_data.is_empty() {
+        // Normalize to show relative changes
+        let min_val = block_data.iter().min().copied().unwrap_or(0);
+        let normalized: Vec<u64> = block_data
+            .iter()
+            .map(|v| v.saturating_sub(min_val))
+            .collect();
+
+        let sparkline = Sparkline::default()
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Block Height ")
+                    .border_style(Style::default().fg(palette.border)),
+            )
+            .data(&normalized)
+            .style(Style::default().fg(palette.sparkline))
+            .bar_set(symbols::bar::NINE_LEVELS);
+
+        frame.render_widget(sparkline, chunks[0]);
+    } else {
+        let empty = Paragraph::new("No history").block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Block Height ")
+                .border_style(Style::default().fg(palette.border)),
+        );
+        frame.render_widget(empty, chunks[0]);
+    }
+
+    // Memory sparkline
+    let mem_data = history.memory_used.as_slice();
+    if !mem_data.is_empty() {
+        // Normalize to fit in sparkline range
+        let max_val = mem_data.iter().max().copied().unwrap_or(1);
+        let scale = if max_val > 0 {
+            100.0 / max_val as f64
+        } else {
+            1.0
+        };
+        let normalized: Vec<u64> = mem_data
+            .iter()
+            .map(|v| (*v as f64 * scale) as u64)
+            .collect();
+
+        let sparkline = Sparkline::default()
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Memory ")
+                    .border_style(Style::default().fg(palette.border)),
+            )
+            .data(&normalized)
+            .style(Style::default().fg(palette.gauge))
+            .bar_set(symbols::bar::NINE_LEVELS);
+
+        frame.render_widget(sparkline, chunks[1]);
+    } else {
+        let empty = Paragraph::new("No history").block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Memory ")
+                .border_style(Style::default().fg(palette.border)),
+        );
+        frame.render_widget(empty, chunks[1]);
+    }
+}
+
+/// Draw the footer with help hints and last update time
+fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+
+    // Build footer spans
+    let mut spans = vec![];
+
+    // Show error if present
+    if let Some(ref error) = node.last_error {
+        spans.push(Span::styled(
+            format!(" ⚠ {} ", truncate_string(error, 50)),
+            Style::default().fg(palette.critical),
+        ));
+        spans.push(Span::raw(" │ "));
+    }
+
+    // Help hints
+    spans.extend(vec![
+        Span::styled(" q", Style::default().fg(palette.tertiary)),
+        Span::raw(" quit "),
+        Span::styled("r", Style::default().fg(palette.tertiary)),
+        Span::raw(" refresh "),
+        Span::styled("t", Style::default().fg(palette.tertiary)),
+        Span::raw(" theme "),
+        Span::styled("?", Style::default().fg(palette.tertiary)),
+        Span::raw(" help"),
+    ]);
+
+    // Add node switching hints if multi-node
+    if app.is_multi_node() {
+        spans.extend(vec![
+            Span::raw(" │ "),
+            Span::styled("Tab", Style::default().fg(palette.tertiary)),
+            Span::raw(" next "),
+            Span::styled("1-9", Style::default().fg(palette.tertiary)),
+            Span::raw(" select"),
+        ]);
+    }
+
+    // Last update time
+    if let Some(last_fetch) = node.last_fetch_time {
+        let elapsed = last_fetch.elapsed().as_secs();
+        let update_str = if elapsed < 2 {
+            "just now".to_string()
+        } else {
+            format!("{}s ago", elapsed)
+        };
+        spans.push(Span::raw(" │ "));
+        spans.push(Span::styled(
+            format!("Updated {}", update_str),
+            Style::default().fg(palette.text_muted),
+        ));
+    }
+
+    // Theme name
+    spans.push(Span::raw(" │ "));
+    spans.push(Span::styled(
+        app.theme.display_name(),
+        Style::default().fg(palette.text_muted),
+    ));
+
+    let footer = Paragraph::new(Line::from(spans));
     frame.render_widget(footer, area);
 }
 
 /// Draw the help popup overlay
 fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: &Palette) {
-    let popup_area = centered_rect(60, if is_multi_node { 60 } else { 50 }, area);
+    let popup_area = centered_rect(60, if is_multi_node { 65 } else { 55 }, area);
 
     // Clear the background
     frame.render_widget(Clear, popup_area);
@@ -729,6 +837,43 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 // ============================================================================
+// Table row helpers
+// ============================================================================
+
+fn create_metric_row<'a>(label: &'a str, value: String, palette: &Palette) -> Row<'a> {
+    Row::new(vec![
+        Cell::from(Span::styled(label, Style::default().fg(palette.text_muted))),
+        Cell::from(Span::styled(value, Style::default().fg(palette.text))),
+    ])
+}
+
+fn create_health_row<'a>(
+    label: &'a str,
+    value: String,
+    health: HealthStatus,
+    palette: &Palette,
+) -> Row<'a> {
+    let color = health_to_color(health, palette);
+    Row::new(vec![
+        Cell::from(Span::styled(label, Style::default().fg(color))),
+        Cell::from(Span::styled(value, Style::default().fg(color))),
+    ])
+}
+
+fn create_separator_row(palette: &Palette) -> Row<'static> {
+    Row::new(vec![
+        Cell::from(Span::styled(
+            "─────────",
+            Style::default().fg(palette.border),
+        )),
+        Cell::from(Span::styled(
+            "────────",
+            Style::default().fg(palette.border),
+        )),
+    ])
+}
+
+// ============================================================================
 // Formatting helpers
 // ============================================================================
 
@@ -762,54 +907,6 @@ fn format_bytes(bytes: Option<u64>) -> String {
         Some(b) if b >= 1_048_576 => format!("{:.2} MB", b as f64 / 1_048_576.0),
         Some(b) if b >= 1024 => format!("{:.2} KB", b as f64 / 1024.0),
         Some(b) => format!("{} B", b),
-        None => "—".to_string(),
-    }
-}
-
-#[allow(dead_code)]
-fn format_duration_secs(seconds: Option<f64>) -> String {
-    match seconds {
-        Some(s) if s >= 86400.0 => {
-            let days = s / 86400.0;
-            format!("{:.1}d", days)
-        }
-        Some(s) if s >= 3600.0 => {
-            let hours = s / 3600.0;
-            format!("{:.1}h", hours)
-        }
-        Some(s) if s >= 60.0 => {
-            let mins = s / 60.0;
-            format!("{:.1}m", mins)
-        }
-        Some(s) => format!("{:.1}s", s),
-        None => "—".to_string(),
-    }
-}
-
-fn format_sync_progress(progress: Option<f64>) -> String {
-    match progress {
-        Some(p) if p >= 99.9 => "100% ✓".to_string(),
-        Some(p) => format!("{:.2}%", p),
-        None => "—".to_string(),
-    }
-}
-
-fn format_cpu_ms(ms: Option<u64>) -> String {
-    match ms {
-        Some(total_ms) => {
-            let secs = total_ms / 1000;
-            let hours = secs / 3600;
-            let mins = (secs % 3600) / 60;
-            let sec = secs % 60;
-
-            if hours > 0 {
-                format!("{}h {}m {}s", hours, mins, sec)
-            } else if mins > 0 {
-                format!("{}m {}s", mins, sec)
-            } else {
-                format!("{}s", sec)
-            }
-        }
         None => "—".to_string(),
     }
 }
@@ -853,14 +950,6 @@ fn format_tip_age(seconds: Option<u64>) -> String {
     }
 }
 
-fn format_epoch_slot(epoch: Option<u64>, slot_in_epoch: Option<u64>) -> String {
-    match (epoch, slot_in_epoch) {
-        (Some(e), Some(s)) => format!("{} (slot {})", format_number(e), format_number(s)),
-        (Some(e), None) => format_number(e),
-        _ => "—".to_string(),
-    }
-}
-
 fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()
@@ -893,7 +982,7 @@ fn format_density(density: Option<f64>) -> String {
 fn format_block_delay(secs: Option<f64>) -> String {
     match secs {
         Some(s) if s < 0.001 => "< 1ms".to_string(),
-        Some(s) if s < 1.0 => format!("{:.1}ms", s * 1000.0),
+        Some(s) if s < 1.0 => format!("{:.0}ms", s * 1000.0),
         Some(s) => format!("{:.2}s", s),
         None => "—".to_string(),
     }
