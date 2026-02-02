@@ -185,6 +185,8 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 || name.contains("cpu")
                 || name.contains("Mempool")
                 || name.contains("Txs")
+                || name.contains("blockdelay")
+                || name.contains("cdf")
             {
                 debug!("Found metric: {} = {}", name, value);
             }
@@ -269,32 +271,41 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
                 }
 
                 // Block fetch client metrics
-                // blockdelay uses _real suffix in current cardano-node (DoubleM type)
+                // blockdelay - various suffixes across cardano-node versions
                 "cardano_node_metrics_blockfetchclient_blockdelay_s"
-                | "cardano_node_metrics_blockfetchclient_blockdelay_real" => {
+                | "cardano_node_metrics_blockfetchclient_blockdelay_real"
+                | "cardano_node_metrics_blockfetchclient_blockdelay" => {
                     metrics.block_delay_s = Some(value);
                 }
                 // served.block can be _int (legacy) or _counter (current)
                 "cardano_node_metrics_served_block_count_int"
+                | "cardano_node_metrics_served_block_count_counter"
                 | "cardano_node_metrics_served_block_counter" => {
                     metrics.blocks_served = Some(value as u64);
                 }
                 // lateblocks is a counter
                 "cardano_node_metrics_blockfetchclient_lateblocks"
+                | "cardano_node_metrics_blockfetchclient_lateblocks_int"
                 | "cardano_node_metrics_blockfetchclient_lateblocks_counter" => {
                     metrics.blocks_late = Some(value as u64);
                 }
-                // CDF metrics use _real suffix (DoubleM type)
+                // CDF metrics - various suffixes (DoubleM gives _real, but may vary)
                 "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne"
-                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne_real" => {
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfOne_real"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf1s"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf1s_real" => {
                     metrics.block_delay_cdf_1s = Some(value);
                 }
                 "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree"
-                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree_real" => {
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfThree_real"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf3s"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf3s_real" => {
                     metrics.block_delay_cdf_3s = Some(value);
                 }
                 "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive"
-                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive_real" => {
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdfFive_real"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf5s"
+                | "cardano_node_metrics_blockfetchclient_blockdelay_cdf5s_real" => {
                     metrics.block_delay_cdf_5s = Some(value);
                 }
 
