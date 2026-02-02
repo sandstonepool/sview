@@ -288,7 +288,7 @@ fn draw_chain_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palette
         .ratio(progress / 100.0)
         .label(Span::styled(
             label,
-            Style::default().fg(palette.text).bold(),
+            Style::default().fg(palette.gauge_label).bold(),
         ));
 
     frame.render_widget(gauge, chunks[0]);
@@ -333,7 +333,7 @@ fn draw_network_column(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
         .ratio((progress / 100.0).min(1.0))
         .label(Span::styled(
             label,
-            Style::default().fg(palette.text).bold(),
+            Style::default().fg(palette.gauge_label).bold(),
         ));
 
     frame.render_widget(gauge, chunks[0]);
@@ -383,7 +383,7 @@ fn draw_resources_column(frame: &mut Frame, area: Rect, app: &App, palette: &Pal
         .ratio(ratio)
         .label(Span::styled(
             label,
-            Style::default().fg(palette.text).bold(),
+            Style::default().fg(palette.gauge_label).bold(),
         ));
 
     frame.render_widget(gauge, chunks[0]);

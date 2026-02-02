@@ -103,9 +103,10 @@ pub struct Palette {
     pub background: Color, // Background (mostly for light mode)
 
     // Special colors
-    pub sparkline: Color, // Sparkline graphs
-    pub gauge: Color,     // Gauge/progress bar
-    pub gauge_bg: Color,  // Gauge background (for proper contrast)
+    pub sparkline: Color,   // Sparkline graphs
+    pub gauge: Color,       // Gauge/progress bar
+    pub gauge_bg: Color,    // Gauge background (for proper contrast)
+    pub gauge_label: Color, // Gauge label text (high contrast against fill)
 }
 
 impl Palette {
@@ -126,6 +127,7 @@ impl Palette {
             sparkline: Color::Rgb(139, 233, 253),
             gauge: Color::Rgb(80, 250, 123),
             gauge_bg: Color::Rgb(40, 42, 54), // Dark but not black
+            gauge_label: Color::Rgb(20, 20, 30), // Near-black for contrast on bright fills
         }
     }
 
@@ -144,7 +146,8 @@ impl Palette {
             background: Color::Black,
             sparkline: Color::Rgb(255, 179, 155),
             gauge: Color::Rgb(255, 210, 126),
-            gauge_bg: Color::Rgb(50, 40, 35), // Warm dark brown
+            gauge_bg: Color::Rgb(50, 40, 35),    // Warm dark brown
+            gauge_label: Color::Rgb(30, 20, 15), // Dark warm for contrast
         }
     }
 
@@ -163,7 +166,8 @@ impl Palette {
             background: Color::Black,
             sparkline: Color::Rgb(209, 172, 255),
             gauge: Color::Rgb(255, 150, 200),
-            gauge_bg: Color::Rgb(45, 35, 55), // Dark purple
+            gauge_bg: Color::Rgb(45, 35, 55),    // Dark purple
+            gauge_label: Color::Rgb(25, 20, 35), // Dark purple-tinted for contrast
         }
     }
 
@@ -182,7 +186,8 @@ impl Palette {
             background: Color::Black,
             sparkline: Color::Rgb(100, 255, 218),
             gauge: Color::Rgb(135, 206, 250),
-            gauge_bg: Color::Rgb(35, 50, 50), // Dark teal
+            gauge_bg: Color::Rgb(35, 50, 50),    // Dark teal
+            gauge_label: Color::Rgb(15, 30, 30), // Dark teal-tinted for contrast
         }
     }
 
@@ -203,6 +208,7 @@ impl Palette {
             sparkline: Color::Rgb(30, 90, 180),
             gauge: Color::Rgb(30, 130, 50),
             gauge_bg: Color::Rgb(220, 220, 230), // Light gray for gauge bg
+            gauge_label: Color::Rgb(255, 255, 255), // White for contrast on dark fills
         }
     }
 
@@ -222,6 +228,7 @@ impl Palette {
             sparkline: Color::Rgb(180, 80, 60),
             gauge: Color::Rgb(180, 110, 30),
             gauge_bg: Color::Rgb(235, 225, 215), // Warm light gray
+            gauge_label: Color::Rgb(255, 255, 255), // White for contrast on dark fills
         }
     }
 
@@ -241,6 +248,7 @@ impl Palette {
             sparkline: Color::Rgb(0, 130, 110),
             gauge: Color::Rgb(50, 100, 170),
             gauge_bg: Color::Rgb(220, 230, 235), // Cool light gray
+            gauge_label: Color::Rgb(255, 255, 255), // White for contrast on dark fills
         }
     }
 }
