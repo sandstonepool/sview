@@ -6,7 +6,9 @@
 use crate::config::{AppConfig, Config, NodeRole, NodeRuntimeConfig};
 use crate::history::MetricsHistory;
 use crate::metrics::{MetricsClient, NodeMetrics};
+use crate::storage::StorageManager;
 use std::time::Instant;
+use tracing::{debug, warn};
 
 /// UI mode for the application
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -36,6 +38,8 @@ pub struct NodeState {
     pub metrics: NodeMetrics,
     /// Historical metrics for sparklines
     pub history: MetricsHistory,
+    /// Persistent storage manager
+    storage: StorageManager,
     /// Last fetch error (if any)
     pub last_error: Option<String>,
     /// Fetch count
@@ -51,7 +55,29 @@ impl NodeState {
     pub fn new(node_config: &NodeRuntimeConfig, app_config: &AppConfig) -> Self {
         let config = Config::from_node(node_config, app_config);
         let metrics_client = MetricsClient::new(config.metrics_url(), config.prom_timeout());
-        let history = MetricsHistory::new(config.history_length);
+        let mut history = MetricsHistory::new(config.history_length);
+
+        // Initialize storage and load historical data
+        let storage = StorageManager::new(&config.node_name);
+
+        // Try to load historical data to backfill sparklines
+        match storage.populate_history(&mut history, config.history_length) {
+            Ok(()) => {
+                debug!(
+                    "Loaded historical data for '{}' ({} samples)",
+                    config.node_name,
+                    history.block_height.len()
+                );
+            }
+            Err(e) => {
+                debug!("No historical data loaded for '{}': {}", config.node_name, e);
+            }
+        }
+
+        // Run periodic cleanup of old data
+        if let Err(e) = storage.cleanup_old_data() {
+            warn!("Failed to cleanup old data for '{}': {}", config.node_name, e);
+        }
 
         Self {
             config,
@@ -59,6 +85,7 @@ impl NodeState {
             metrics_client,
             metrics: NodeMetrics::default(),
             history,
+            storage,
             last_error: None,
             fetch_count: 0,
             last_block_height: None,
@@ -87,12 +114,22 @@ impl NodeState {
                 self.history.update(&self.metrics);
                 self.last_error = None;
                 self.fetch_count += 1;
+
+                // Save snapshot to persistent storage (hourly sampling)
+                if let Err(e) = self.storage.save_snapshot(&self.metrics) {
+                    debug!("Failed to save metric snapshot: {}", e);
+                }
             }
             Err(e) => {
                 self.metrics.connected = false;
                 self.last_error = Some(e.to_string());
             }
         }
+    }
+
+    /// Get the storage manager for this node
+    pub fn storage(&self) -> &StorageManager {
+        &self.storage
     }
 
     /// Get seconds since last block was received

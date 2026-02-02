@@ -53,6 +53,10 @@ pub struct CliArgs {
     /// Path to config file (default: ~/.config/sview/config.toml)
     #[arg(short, long, env = "SVIEW_CONFIG")]
     pub config: Option<PathBuf>,
+
+    /// Export collected metrics to CSV file and exit
+    #[arg(long, value_name = "FILE")]
+    pub export: Option<PathBuf>,
 }
 
 /// Configuration file structure (TOML)
@@ -197,6 +201,9 @@ pub struct AppConfig {
     pub refresh_interval: Duration,
     pub history_length: usize,
     pub epoch_length: u64,
+
+    /// Export path (if --export was specified)
+    pub export_path: Option<PathBuf>,
 }
 
 impl AppConfig {
@@ -252,6 +259,7 @@ impl AppConfig {
             refresh_interval: Duration::from_secs(refresh_secs),
             history_length,
             epoch_length,
+            export_path: args.export,
         }
     }
 
