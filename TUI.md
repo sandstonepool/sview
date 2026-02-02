@@ -1,6 +1,6 @@
 # sview TUI Design
 
-**Version:** v0.1.20 (Living Document)  
+**Version:** v0.1.21 (Living Document)  
 **Last Updated:** 2026-02-02  
 **Maintainer:** Claw Daddy  
 

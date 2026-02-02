@@ -152,24 +152,31 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the main content area with metrics
 fn draw_main(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    // Split into: epoch gauge, metrics, and sparklines
+    // Split into: epoch/memory gauge, metrics
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Epoch progress gauge (full width)
+            Constraint::Length(3),  // Epoch progress + memory gauge (side-by-side)
             Constraint::Min(15),    // Metrics section (3 columns)
-            Constraint::Length(5),  // Sparklines section (side-by-side)
         ])
         .split(area);
 
-    // Epoch progress gauge (full width)
-    draw_epoch_progress(frame, chunks[0], app, palette);
+    // Epoch progress and memory gauge (side-by-side, full width)
+    draw_epoch_and_memory_section(frame, chunks[0], app, palette);
 
     // Metrics section: 3-column layout
     draw_metrics_section(frame, chunks[1], app, palette);
+}
 
-    // Sparklines section: Side-by-side
-    draw_sparklines_section(frame, chunks[2], app, palette);
+/// Draw epoch progress and memory gauge side-by-side
+fn draw_epoch_and_memory_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(area);
+
+    draw_epoch_progress(frame, chunks[0], app, palette);
+    draw_memory_gauge(frame, chunks[1], app, palette);
 }
 
 /// Draw the metrics section (chain, network, resources in 3 columns)
@@ -187,17 +194,6 @@ fn draw_metrics_section(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
 
     // Right column: Resource & System Metrics
     draw_resource_metrics_compact(frame, chunks[2], app, palette);
-}
-
-/// Draw the sparklines section (block + memory side-by-side)
-fn draw_sparklines_section(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(area);
-
-    draw_block_sparkline(frame, chunks[0], app, palette);
-    draw_memory_sparkline(frame, chunks[1], app, palette);
 }
 
 /// Draw compact chain metrics (epoch gauge moved to full-width section)
@@ -338,41 +334,38 @@ fn draw_epoch_progress(frame: &mut Frame, area: Rect, app: &App, palette: &Palet
     frame.render_widget(gauge, area);
 }
 
-/// Draw block height sparkline
-fn draw_block_sparkline(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+/// Draw memory usage gauge
+fn draw_memory_gauge(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
-    let data = node.history.block_height.as_slice();
+    let metrics = &node.metrics;
+    let memory_health = node.memory_health();
 
-    // Normalize data for display (show relative changes)
-    let normalized: Vec<u64> = if let (Some(min), Some(max)) = (
-        node.history.block_height.min(),
-        node.history.block_height.max(),
-    ) {
-        let range = (max - min).max(1.0);
-        data.iter()
-            .map(|v| ((*v as f64 - min) / range * 100.0) as u64)
-            .collect()
-    } else {
-        data
+    let label = match metrics.memory_used {
+        Some(bytes) => format_bytes(Some(bytes)),
+        None => "—".to_string(),
     };
 
-    let title = if let Some(bpm) = node.blocks_per_minute() {
-        format!(" Blocks ({:.1}/min) ", bpm)
+    let ratio = if let (Some(used), Some(heap)) = (metrics.memory_used, metrics.memory_heap) {
+        (used as f64 / heap as f64).min(1.0)
     } else {
-        " Blocks ".to_string()
+        0.0
     };
 
-    let sparkline = Sparkline::default()
+    let gauge = Gauge::default()
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(title)
+                .title(" Memory ")
                 .border_style(Style::default().fg(palette.border)),
         )
-        .data(&normalized)
-        .style(Style::default().fg(palette.sparkline));
+        .gauge_style(Style::default().fg(health_to_color(memory_health, palette)))
+        .ratio(ratio)
+        .label(Span::styled(
+            label,
+            Style::default().fg(palette.text).bold(),
+        ));
 
-    frame.render_widget(sparkline, area);
+    frame.render_widget(gauge, area);
 }
 
 /// Draw network and peer metrics panel
@@ -569,36 +562,6 @@ fn draw_resource_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pal
 }
 
 /// Draw memory usage sparkline
-fn draw_memory_sparkline(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
-    let node = app.current_node();
-    let data = node.history.memory_used.as_slice();
-
-    // Normalize to show relative changes
-    let normalized: Vec<u64> = if let (Some(min), Some(max)) = (
-        node.history.memory_used.min(),
-        node.history.memory_used.max(),
-    ) {
-        let range = (max - min).max(1.0);
-        data.iter()
-            .map(|v| ((*v as f64 - min) / range * 100.0) as u64)
-            .collect()
-    } else {
-        data
-    };
-
-    let sparkline = Sparkline::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Memory ")
-                .border_style(Style::default().fg(palette.border)),
-        )
-        .data(&normalized)
-        .style(Style::default().fg(health_to_color(node.memory_health(), palette)));
-
-    frame.render_widget(sparkline, area);
-}
-
 /// Draw the footer with help and status
 fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     let node = app.current_node();
