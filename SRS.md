@@ -175,11 +175,12 @@ role = "bp"
   - IP address
   - Port number
   - Direction (IN/OUT)
-  - RTT latency (color-coded)
-  - Connection state
+  - Location (city, country via GeoIP lookup)
+  - RTT latency (color-coded: green <50ms, yellow <100ms, red >100ms)
   - Queue information (recv/send)
 - Sorted by direction (incoming first), then RTT
 - Summary showing total peers, direction breakdown, average RTT
+- Peer detail view accessible by selecting peer and pressing Enter
 
 #### 3.5.2 Socket Inspection
 - Uses `ss` command to discover TCP connections
@@ -322,8 +323,8 @@ role = "relay"  # or "bp"
 ## 8. Future Considerations
 
 ### 8.1 Planned Features
-- [ ] IP geolocation for peers (infrastructure ready)
-- [ ] Alert notifications (file logging implemented)
+- [x] IP geolocation for peers (integrated in peer list view)
+- [x] Alert notifications (header display with ⚠ icon + file logging)
 - [ ] Connection pooling optimization
 - [ ] Async request cancellation
 
@@ -355,6 +356,7 @@ All releases must pass:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-02-02 | Initial SRS based on v0.1.32 |
+| 1.1 | 2026-02-02 | Updated for v0.1.42: GeoIP integration, alert display, peer detail view |
 
 ---
 
