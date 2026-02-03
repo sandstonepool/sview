@@ -42,15 +42,48 @@ impl std::fmt::Display for NodeType {
     }
 }
 
+/// Build information from cardano_node_metrics_cardano_build_info
+#[derive(Debug, Clone, Default)]
+pub struct BuildInfo {
+    /// Full version string (e.g., "10.6.1")
+    pub version: Option<String>,
+    /// Git revision hash
+    pub revision: Option<String>,
+    /// Architecture (e.g., "x86_64")
+    pub architecture: Option<String>,
+    /// OS name (e.g., "linux", "darwin")
+    pub os_name: Option<String>,
+    /// Compiler name (e.g., "ghc")
+    pub compiler_name: Option<String>,
+    /// Compiler version (e.g., "9.6.6")
+    pub compiler_version: Option<String>,
+}
+
+impl BuildInfo {
+    /// Get a short version string for display
+    pub fn short_version(&self) -> Option<String> {
+        self.version.clone()
+    }
+
+    /// Get version with short revision for display (e.g., "10.6.1 [0c220b27]")
+    #[allow(dead_code)]
+    pub fn version_with_revision(&self) -> Option<String> {
+        match (&self.version, &self.revision) {
+            (Some(v), Some(r)) if r.len() >= 8 => Some(format!("{} [{}]", v, &r[..8])),
+            (Some(v), Some(r)) => Some(format!("{} [{}]", v, r)),
+            (Some(v), None) => Some(v.clone()),
+            _ => None,
+        }
+    }
+}
+
 /// Parsed metrics from a Cardano node (matches nview PromMetrics)
 #[derive(Debug, Clone, Default)]
 pub struct NodeMetrics {
     /// Detected node type
     pub node_type: NodeType,
-    /// Node software version (from build_info metric or config)
-    /// Reserved for future Prometheus build_info parsing
-    #[allow(dead_code)]
-    pub node_version: Option<String>,
+    /// Build information from Prometheus (auto-detected)
+    pub build_info: BuildInfo,
     /// Current block height
     pub block_height: Option<u64>,
     /// Current slot number
@@ -176,6 +209,14 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
     for line in text.lines() {
         // Skip comments and empty lines
         if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+
+        // Check for build_info metric (has labels with version info)
+        if line.starts_with("cardano_node_metrics_cardano_build_info{") {
+            if let Some(build_info) = parse_build_info_labels(line) {
+                metrics.build_info = build_info;
+            }
             continue;
         }
 
@@ -560,6 +601,43 @@ fn parse_metric_line(line: &str) -> Option<(String, f64)> {
     Some((name, value))
 }
 
+/// Parse build_info metric labels to extract version information
+/// Example: cardano_node_metrics_cardano_build_info{version="10.6.1",revision="abc123",...} 1
+fn parse_build_info_labels(line: &str) -> Option<BuildInfo> {
+    // Find the labels section between { and }
+    let start = line.find('{')?;
+    let end = line.find('}')?;
+    let labels_str = &line[start + 1..end];
+
+    let mut build_info = BuildInfo::default();
+
+    // Parse each label: key="value"
+    // Handle comma-separated labels, being careful with quoted values
+    for part in labels_str.split(',') {
+        let part = part.trim();
+        if let Some((key, value)) = part.split_once('=') {
+            // Remove quotes from value
+            let value = value.trim_matches('"');
+            match key {
+                "version" => build_info.version = Some(value.to_string()),
+                "revision" => build_info.revision = Some(value.to_string()),
+                "architecture" => build_info.architecture = Some(value.to_string()),
+                "os_name" => build_info.os_name = Some(value.to_string()),
+                "compiler_name" => build_info.compiler_name = Some(value.to_string()),
+                "compiler_version" => build_info.compiler_version = Some(value.to_string()),
+                _ => {} // Ignore other labels
+            }
+        }
+    }
+
+    // Only return if we got at least a version
+    if build_info.version.is_some() {
+        Some(build_info)
+    } else {
+        None
+    }
+}
+
 /// Detect the node implementation type based on available metrics
 fn detect_node_type(metrics: &HashMap<String, f64>) -> NodeType {
     // Check for Dingo-specific metrics
@@ -660,5 +738,26 @@ cardano_node_metrics_connectionManager_unidirectionalConns 8
         assert_eq!(metrics.outgoing_connections, Some(8));
         assert_eq!(metrics.full_duplex_connections, Some(20));
         assert_eq!(metrics.unidirectional_connections, Some(8));
+    }
+
+    #[test]
+    fn test_parse_build_info() {
+        let text = r#"
+cardano_node_metrics_cardano_build_info{version_major="10",version_minor="6",version_patch="1",version="10.6.1",revision="0c220b27a9b612bb94b557017452be4a97b640d4",compiler_name="ghc",compiler_version="9.6.6",compiler_version_major="9",compiler_version_minor="6",compiler_version_patch="6",architecture="x86_64",os_name="darwin"} 1
+cardano_node_metrics_blockNum_int 10500000
+"#;
+        let metrics = parse_prometheus_metrics(text);
+        assert_eq!(metrics.build_info.version, Some("10.6.1".to_string()));
+        assert_eq!(
+            metrics.build_info.revision,
+            Some("0c220b27a9b612bb94b557017452be4a97b640d4".to_string())
+        );
+        assert_eq!(metrics.build_info.architecture, Some("x86_64".to_string()));
+        assert_eq!(metrics.build_info.os_name, Some("darwin".to_string()));
+        assert_eq!(metrics.build_info.compiler_name, Some("ghc".to_string()));
+        assert_eq!(metrics.build_info.compiler_version, Some("9.6.6".to_string()));
+        assert_eq!(metrics.build_info.short_version(), Some("10.6.1".to_string()));
+        // Ensure other metrics still parsed correctly
+        assert_eq!(metrics.block_height, Some(10500000));
     }
 }

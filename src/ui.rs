@@ -194,8 +194,18 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         vec![]
     };
 
-    // Build version string: prefer config version, fallback to detected node type
-    let version_span = if let Some(ref version) = node.config.version {
+    // Build version string: prefer auto-detected from Prometheus, then config, then node type
+    let version_span = if let Some(version) = metrics.build_info.short_version() {
+        // Auto-detected from cardano_node_metrics_cardano_build_info
+        vec![
+            Span::styled(
+                format!("v{}", version),
+                Style::default().fg(palette.text_muted),
+            ),
+            Span::raw("  "),
+        ]
+    } else if let Some(ref version) = node.config.version {
+        // Manually configured in config.toml
         vec![
             Span::styled(
                 format!("v{}", version),
