@@ -733,36 +733,46 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
 
 /// Draw the help popup overlay
 fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: &Palette) {
-    let popup_area = centered_rect(60, if is_multi_node { 65 } else { 55 }, area);
+    let popup_area = centered_rect(65, if is_multi_node { 85 } else { 75 }, area);
 
     // Clear the background
     frame.render_widget(Clear, popup_area);
 
     let mut help_lines = vec![
         Line::from(Span::styled(
-            "Keyboard Shortcuts",
+            "Global Shortcuts",
             Style::default().bold().underlined().fg(palette.primary),
         )),
         Line::from(""),
         Line::from(vec![
             Span::styled("  q, Esc    ", Style::default().fg(palette.tertiary)),
-            Span::raw("Quit sview"),
+            Span::raw("Quit / Close overlay"),
         ]),
         Line::from(vec![
             Span::styled("  r         ", Style::default().fg(palette.tertiary)),
             Span::raw("Force refresh metrics"),
         ]),
         Line::from(vec![
+            Span::styled("  ?         ", Style::default().fg(palette.tertiary)),
+            Span::raw("Toggle this help"),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Views",
+            Style::default().bold().underlined().fg(palette.primary),
+        )),
+        Line::from(""),
+        Line::from(vec![
             Span::styled("  t         ", Style::default().fg(palette.tertiary)),
             Span::raw("Cycle color theme"),
         ]),
         Line::from(vec![
             Span::styled("  p         ", Style::default().fg(palette.tertiary)),
-            Span::raw("Show peer connections"),
+            Span::raw("Toggle peer connections"),
         ]),
         Line::from(vec![
-            Span::styled("  ?         ", Style::default().fg(palette.tertiary)),
-            Span::raw("Toggle this help"),
+            Span::styled("  g         ", Style::default().fg(palette.tertiary)),
+            Span::raw("Toggle historical graphs"),
         ]),
     ];
 
@@ -792,6 +802,30 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: 
         ]));
     }
 
+    // Peer list shortcuts
+    help_lines.push(Line::from(""));
+    help_lines.push(Line::from(Span::styled(
+        "Peer List (when open)",
+        Style::default().bold().underlined().fg(palette.primary),
+    )));
+    help_lines.push(Line::from(""));
+    help_lines.push(Line::from(vec![
+        Span::styled("  ↑ ↓, j k  ", Style::default().fg(palette.tertiary)),
+        Span::raw("Navigate peer list"),
+    ]));
+    help_lines.push(Line::from(vec![
+        Span::styled("  Enter, →  ", Style::default().fg(palette.tertiary)),
+        Span::raw("View peer details"),
+    ]));
+    help_lines.push(Line::from(vec![
+        Span::styled("  ←, BS     ", Style::default().fg(palette.tertiary)),
+        Span::raw("Back to peer list"),
+    ]));
+    help_lines.push(Line::from(vec![
+        Span::styled("  r         ", Style::default().fg(palette.tertiary)),
+        Span::raw("Refresh peer list"),
+    ]));
+
     help_lines.extend(vec![
         Line::from(""),
         Line::from(Span::styled(
@@ -801,7 +835,7 @@ fn draw_help_popup(frame: &mut Frame, area: Rect, is_multi_node: bool, palette: 
         Line::from(""),
         Line::from(vec![
             Span::styled("  ● Healthy   ", Style::default().fg(palette.healthy)),
-            Span::raw("Good status"),
+            Span::raw("Operating normally"),
         ]),
         Line::from(vec![
             Span::styled("  ● Warning   ", Style::default().fg(palette.warning)),
