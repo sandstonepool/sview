@@ -213,7 +213,10 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         }
 
         // Check for build_info metric (has labels with version info)
-        if line.starts_with("cardano_node_metrics_cardano_build_info{") {
+        // Handle both "metric_name{" and "metric_name {" (with space)
+        if line.starts_with("cardano_node_metrics_cardano_build_info{")
+            || line.starts_with("cardano_node_metrics_cardano_build_info {")
+        {
             if let Some(build_info) = parse_build_info_labels(line) {
                 metrics.build_info = build_info;
             }
@@ -742,8 +745,9 @@ cardano_node_metrics_connectionManager_unidirectionalConns 8
 
     #[test]
     fn test_parse_build_info() {
+        // Note: Real cardano-node output has a space before the {
         let text = r#"
-cardano_node_metrics_cardano_build_info{version_major="10",version_minor="6",version_patch="1",version="10.6.1",revision="0c220b27a9b612bb94b557017452be4a97b640d4",compiler_name="ghc",compiler_version="9.6.6",compiler_version_major="9",compiler_version_minor="6",compiler_version_patch="6",architecture="x86_64",os_name="darwin"} 1
+cardano_node_metrics_cardano_build_info {version_major="10",version_minor="6",version_patch="1",version="10.6.1",revision="0c220b27a9b612bb94b557017452be4a97b640d4",compiler_name="ghc",compiler_version="9.6.6",compiler_version_major="9",compiler_version_minor="6",compiler_version_patch="6",architecture="x86_64",os_name="darwin"} 1
 cardano_node_metrics_blockNum_int 10500000
 "#;
         let metrics = parse_prometheus_metrics(text);
