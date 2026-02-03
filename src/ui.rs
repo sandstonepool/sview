@@ -1457,16 +1457,17 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
     frame.render_widget(Clear, popup_area);
 
     // Create layout for multiple sparklines
+    // Graphs expand equally to fill space, footer stays fixed at bottom
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(5), // Block Height
-            Constraint::Length(5), // Peers Connected
-            Constraint::Length(5), // Memory Used
-            Constraint::Length(5), // Mempool TXs
-            Constraint::Length(5), // Sync Progress
-            Constraint::Min(3),    // Footer/help
+            Constraint::Min(4), // Block Height - expands
+            Constraint::Min(4), // Peers Connected - expands
+            Constraint::Min(4), // Memory Used - expands
+            Constraint::Min(4), // Mempool TXs - expands
+            Constraint::Min(4), // Sync Progress - expands
+            Constraint::Length(3), // Footer/help - fixed, doesn't expand
         ])
         .split(popup_area);
 
