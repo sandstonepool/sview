@@ -37,14 +37,16 @@ experience.
 - 📊 Real-time node metrics display with trend indicators (↑↓→)
 - 📡 Block propagation stats (CDF: % of blocks within 1s/3s/5s)
 - 🔑 OpCert validation for block producers (disk vs chain counter check)
-- 🌐 Detailed peer list view with IP, RTT, direction, and connection state
-- 🔍 Auto-detection of node type (cardano-node, Dingo, Amaru)
+- 🌐 Detailed peer list view with IP, RTT, direction, and geolocation
+- 📈 Historical graphs view for key metrics over time
+- 🔍 Auto-detection of node type and version from Prometheus metrics
 - 🚦 Color-coded health indicators (sync status, peer count, memory)
 - 📅 Epoch progress bar with time remaining countdown
+- 🎨 8 color themes (5 dark + 3 light) with one-key cycling
 - ⚡ Lightweight and fast — single binary, no runtime dependencies
-- 🎨 Clean, intuitive terminal interface
 - 🔧 Flexible configuration via CLI arguments, environment variables, or config file
 - 🖥️ **Multi-node monitoring** — watch all your relays and block producer from one terminal
+- 🐧 **Cross-platform** — Linux and macOS support
 
 ## Installation
 
@@ -129,6 +131,7 @@ Use `Tab` or number keys `1-9` to switch between nodes.
 | `?` | Toggle help |
 | `t` | Cycle color theme |
 | `p` | Show peer connections |
+| `g` | Show historical graphs |
 | `Tab` | Next node (multi-node mode) |
 | `Shift+Tab` | Previous node (multi-node mode) |
 | `1-9` | Select node by number (multi-node mode) |

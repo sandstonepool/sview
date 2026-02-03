@@ -8,13 +8,18 @@ sview can be configured via command-line arguments or a configuration file. For 
 sview [OPTIONS]
 
 Options:
-  -H, --host <HOST>      Prometheus metrics host [default: 127.0.0.1]
-  -p, --port <PORT>      Prometheus metrics port [default: 12798]
-  -c, --config <FILE>    Path to config file
-  -n, --network <NET>    Network name (mainnet, preprod, preview) [default: mainnet]
-      --export <FILE>    Export metrics to CSV and exit
-  -h, --help             Print help
-  -V, --version          Print version
+  -n, --node-name <NAME>              Display name for the node
+      --network <NETWORK>             Cardano network (mainnet, preprod, preview)
+      --prom-host <HOST>              Prometheus metrics host [default: 127.0.0.1]
+  -p, --prom-port <PORT>              Prometheus metrics port [default: 12798]
+      --prom-timeout-secs <SECS>      Request timeout in seconds [default: 3]
+  -r, --refresh-interval-secs <SECS>  Refresh interval in seconds [default: 2]
+      --history-length <N>            History length for sparklines [default: 60]
+      --epoch-length <SLOTS>          Epoch length in slots [default: 432000]
+  -c, --config <FILE>                 Path to config file
+      --export <FILE>                 Export metrics to CSV and exit
+  -h, --help                          Print help
+  -V, --version                       Print version
 ```
 
 ## Configuration File
@@ -121,6 +126,7 @@ Available themes:
 | `dark-warm` | Dark | Coral and peach tones |
 | `dark-purple` | Dark | Purple and magenta |
 | `dark-teal` | Dark | Teal and mint greens |
+| `monokai` | Dark | Classic Sublime Text colors |
 | `light-default` | Light | Soft blues on light background |
 | `light-warm` | Light | Peachy pastels |
 | `light-cool` | Light | Minty greens |

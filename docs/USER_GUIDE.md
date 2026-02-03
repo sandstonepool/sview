@@ -159,15 +159,46 @@ Press `Enter` on a selected peer to see full details:
 - Connection State
 - Buffer Queue sizes
 
+## Historical Graphs View
+
+Press `g` to open a full-screen view of historical metrics:
+
+```
+┌─ Historical Graphs ─────────────────────────────────────────────────────────┐
+│ ┌─ Block Height — Current: 10,500,000 ─────────────────────────────────────┐│
+│ │▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▂▃▄▅▆▇█▇▆▅▄▃▂▁▂▃▄▅▆▇█▇▆▅▄▃▂▁││
+│ └──────────────────────────────────────────────────────────────────────────┘│
+│ ┌─ Peers Connected — Current: 25 ──────────────────────────────────────────┐│
+│ │▅▆▆▇▇▇▆▆▅▅▄▄▅▅▆▆▇▇▇▆▆▅▅▄▄▅▅▆▆▇▇▇▆▆▅▅▄▄▅▅▆▆▇▇▇▆▆▅▅▄▄▅▅▆▆▇▇▇▆▆▅▅▄▄▅▅▆▆▇▇▇││
+│ └──────────────────────────────────────────────────────────────────────────┘│
+│ ┌─ Memory Used (MB) — Current: 4200 MB ────────────────────────────────────┐│
+│ │▃▃▃▃▄▄▄▄▅▅▅▅▆▆▆▆▇▇▇▇▃▃▃▃▄▄▄▄▅▅▅▅▆▆▆▆▇▇▇▇▃▃▃▃▄▄▄▄▅▅▅▅▆▆▆▆▇▇▇▇▃▃▃▃▄▄▄▄▅▅▅▅││
+│ └──────────────────────────────────────────────────────────────────────────┘│
+│ ... Mempool TXs, Sync Progress ...                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│            Press [Esc] to close   |   History: 60 samples (120 seconds)     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Displayed Metrics
+- **Block Height**: Chain tip progression over time
+- **Peers Connected**: Network connectivity trends
+- **Memory Used**: Memory consumption in MB
+- **Mempool TXs**: Transaction mempool size
+- **Sync Progress**: Sync percentage over time
+
+The graphs show approximately 2 minutes of history (60 samples at 2-second refresh).
+
 ## Theme System
 
-sview includes 7 color themes optimized for readability:
+sview includes 8 color themes optimized for readability:
 
 ### Dark Themes (for dark terminals)
 - **Dark Default**: Cool blues and cyans
 - **Dark Warm**: Coral and peach tones
 - **Dark Purple**: Purple and magenta accents
 - **Dark Teal**: Teal and mint greens
+- **Monokai**: Classic Sublime Text color scheme
 
 ### Light Themes (for light terminals)
 - **Light Default**: Deep blues on light background
@@ -229,6 +260,7 @@ Press `?` to see the help overlay with all keyboard shortcuts and health indicat
 | `q`, `Esc` | Quit / Close overlay |
 | `r` | Refresh metrics |
 | `p` | Toggle peer list |
+| `g` | Toggle graphs view |
 | `t` | Cycle theme |
 | `?` | Toggle help |
 | `Tab` | Next node |

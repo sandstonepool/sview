@@ -37,7 +37,7 @@ Common issues and their solutions.
 
 4. **Verify sview settings:**
    ```bash
-   sview --host <correct-ip> --port <correct-port>
+   sview --prom-host <correct-ip> --prom-port <correct-port>
    ```
 
 ### Metrics Not Updating
@@ -110,20 +110,35 @@ role = "bp"
 
 ## Peer List Issues
 
-### No Peers Found
+### Peer List Shows "Prometheus" Mode
+
+**Symptoms:**
+- Peer list shows aggregate stats instead of individual peers
+- Message says "Detailed peer info requires running sview on the node"
+
+**Cause:** sview is running remotely and cannot inspect local sockets.
+
+**Solutions:**
+1. **Run sview on the same machine as the node** for full peer details
+2. **Use SSH tunneling** to forward the Prometheus port, then run sview locally
+3. **Accept the limitation** — Prometheus-only mode still shows connection counts and peer state distribution
+
+### No Peers Found (Local Mode)
 
 **Symptoms:**
 - Peer list shows "No peer connections found"
 - Press 'r' doesn't help
 
-**Cause:** sview uses `ss` command to discover peers.
+**Cause:** sview uses `ss` (Linux) or `lsof` (macOS) to discover peers.
 
 **Solutions:**
 
-1. **Verify ss is installed:**
+1. **Verify ss/lsof is installed:**
    ```bash
+   # Linux
    which ss
-   # Should show /usr/sbin/ss or similar
+   # macOS
+   which lsof
    ```
 
 2. **Run sview on the same machine as the node:**
@@ -132,7 +147,10 @@ role = "bp"
 
 3. **Check node has connections:**
    ```bash
+   # Linux
    ss -tni state established | head
+   # macOS
+   lsof -i TCP -n -P | grep cardano
    ```
 
 ### Wrong Peer Details

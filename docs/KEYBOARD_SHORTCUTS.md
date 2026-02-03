@@ -19,6 +19,7 @@ Available in all views:
 | `?` | Toggle help overlay |
 | `t` | Cycle to next color theme |
 | `p` | Open peer list view |
+| `g` | Open historical graphs view |
 
 ## Multi-Node Navigation
 
@@ -64,6 +65,16 @@ When viewing peer details:
 | `←` | Return to peer list |
 | `Esc` | Close to main dashboard |
 
+## Graphs View
+
+When viewing historical graphs (`g`):
+
+| Key | Action |
+|-----|--------|
+| `Esc` | Close graphs view |
+| `g` | Close graphs view |
+| `q` | Close graphs view |
+
 ## Help Overlay
 
 When help is shown (`?`):
@@ -92,6 +103,7 @@ For users familiar with Vim:
 │  ?        Help                          │
 │  t        Theme                         │
 │  p        Peers                         │
+│  g        Graphs                        │
 ├─────────────────────────────────────────┤
 │  Multi-Node:                            │
 │  Tab      Next node                     │

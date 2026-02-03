@@ -40,7 +40,7 @@ Ensure your cardano-node has Prometheus metrics enabled. Add to your node config
 sview
 
 # Connect to remote node
-sview --host 192.168.1.100 --port 12798
+sview --prom-host 192.168.1.100 --prom-port 12798
 
 # Use a config file for multiple nodes
 sview --config ~/.config/sview/config.toml
@@ -72,7 +72,8 @@ When sview starts, you'll see a dashboard with three main sections:
 - **Health Indicators**: Color-coded status (green=good, yellow=warning, red=critical)
 - **Multi-Node Support**: Monitor multiple nodes from a single dashboard
 - **Peer Analysis**: View connected peers with RTT latency and geolocation
-- **Theme System**: 7 color themes for different preferences and lighting
+- **Historical Graphs**: Sparkline graphs for key metrics over time (`g` key)
+- **Theme System**: 8 color themes for different preferences and lighting
 - **Alert System**: Automatic alerts for KES expiry, peer drops, sync issues
 
 ## Next Steps

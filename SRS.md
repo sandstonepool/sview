@@ -214,6 +214,7 @@ When socket inspection fails (remote monitoring), shows aggregate data:
 | Dark Warm | Dark | Coral and peach tones |
 | Dark Purple | Dark | Purple and magenta pastels |
 | Dark Teal | Dark | Teal and mint greens |
+| Monokai | Dark | Classic Sublime Text colors |
 | Light Default | Light | Soft blues on light background |
 | Light Warm | Light | Peachy pastels |
 | Light Cool | Light | Minty greens |
