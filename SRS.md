@@ -82,6 +82,7 @@ This document defines the functional and non-functional requirements for sview. 
 | Peer Distribution | Hot/Warm/Cold counts | Visual bar `[████▒▒░░░░]` |
 | Block Delay | `blockfetchclient_blockdelay_s/real` | Milliseconds or seconds |
 | Blocks Served | `served_block_count_int/counter` | Number |
+| Blocks Late | `blockfetchclient_lateblocks` | Number, color-coded (0=green, 1-10=yellow, >10=red) |
 
 #### 3.1.3 Block Propagation (CDF)
 | Metric | Source | Display Format |
@@ -107,6 +108,7 @@ This document defines the functional and non-functional requirements for sview. 
 | KES Remaining | `remainingKESPeriods_int` | "X (~Xd)" |
 | Forging Status | `forging_enabled_int` | "Enabled"/"Disabled" |
 | Blocks Forged | `Forge_adopted_int` | Number |
+| Missed Slots | `slotsMissedNum_int` | Number, yellow if >0 |
 | OpCert Status | Disk vs chain counter | "✓ X (valid)" or warning |
 
 ### 3.2 Health Indicators

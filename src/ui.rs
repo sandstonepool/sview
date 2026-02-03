@@ -483,6 +483,16 @@ fn draw_chain_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Palett
         ));
     }
 
+    // Add missed slots if available (important for BP operators)
+    if metrics.missed_slots.is_some() && metrics.missed_slots.unwrap_or(0) > 0 {
+        rows.push(create_health_row(
+            "Missed Slots",
+            format_metric_u64(metrics.missed_slots),
+            HealthStatus::Warning, // Any missed slots warrant attention
+            palette,
+        ));
+    }
+
     let table = Table::new(
         rows,
         [Constraint::Percentage(50), Constraint::Percentage(50)],
@@ -544,6 +554,12 @@ fn draw_network_metrics(frame: &mut Frame, area: Rect, app: &App, palette: &Pale
             format_block_delay(metrics.block_delay_s),
             palette,
         ),
+        create_metric_row(
+            "Blks Served",
+            format_metric_u64(metrics.blocks_served),
+            palette,
+        ),
+        create_late_blocks_row(metrics.blocks_late, palette),
         create_metric_row(
             "Prop ≤1s",
             format_cdf_percent(metrics.block_delay_cdf_1s),
@@ -1212,6 +1228,22 @@ fn create_health_row<'a>(
     let color = health_to_color(health, palette);
     Row::new(vec![
         Cell::from(Span::styled(label, Style::default().fg(color))),
+        Cell::from(Span::styled(value, Style::default().fg(color))),
+    ])
+}
+
+/// Create a row for late blocks with health-based coloring
+/// 0 late blocks = good, 1-10 = warning, >10 = critical
+fn create_late_blocks_row(blocks_late: Option<u64>, palette: &Palette) -> Row<'static> {
+    let (value, health) = match blocks_late {
+        Some(0) => ("0".to_string(), HealthStatus::Good),
+        Some(n) if n <= 10 => (n.to_string(), HealthStatus::Warning),
+        Some(n) => (n.to_string(), HealthStatus::Critical),
+        None => ("—".to_string(), HealthStatus::Good),
+    };
+    let color = health_to_color(health, palette);
+    Row::new(vec![
+        Cell::from(Span::styled("Blks Late", Style::default().fg(color))),
         Cell::from(Span::styled(value, Style::default().fg(color))),
     ])
 }
