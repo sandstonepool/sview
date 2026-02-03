@@ -213,11 +213,12 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         }
 
         // Check for build_info metric (has labels with version info)
-        // Handle both "metric_name{" and "metric_name {" (with space)
-        if line.starts_with("cardano_node_metrics_cardano_build_info{")
-            || line.starts_with("cardano_node_metrics_cardano_build_info {")
+        // Metric format: metric_name {key="value",...} value
+        let trimmed = line.trim();
+        if trimmed.starts_with("cardano_node_metrics_cardano_build_info") 
+            && trimmed.contains('{')
         {
-            if let Some(build_info) = parse_build_info_labels(line) {
+            if let Some(build_info) = parse_build_info_labels(trimmed) {
                 metrics.build_info = build_info;
             }
             continue;
