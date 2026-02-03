@@ -134,13 +134,14 @@ Use `Tab` or number keys `1-9` to switch between nodes.
 
 ### Color Themes
 
-sview includes 7 color themes optimized for extended terminal viewing:
+sview includes 8 color themes optimized for extended terminal viewing:
 
 **Dark themes** (for dark terminals):
 - Dark Default — Cool blues and cyans
 - Dark Warm — Coral and peach tones
 - Dark Purple — Purple and magenta pastels
 - Dark Teal — Teal and mint greens
+- Monokai — Classic Sublime Text colors
 
 **Light themes** (for light terminals):
 - Light Default — Soft blues on light background

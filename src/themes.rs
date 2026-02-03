@@ -19,6 +19,8 @@ pub enum Theme {
     DarkPurple,
     /// Teal-focused dark theme
     DarkTeal,
+    /// Monokai theme (classic Sublime Text colors)
+    Monokai,
     /// Light theme (soft pastels on light background)
     LightDefault,
     /// Warm light theme (peachy pastels)
@@ -36,6 +38,7 @@ impl Theme {
             Theme::DarkWarm,
             Theme::DarkPurple,
             Theme::DarkTeal,
+            Theme::Monokai,
             Theme::LightDefault,
             Theme::LightWarm,
             Theme::LightCool,
@@ -48,7 +51,8 @@ impl Theme {
             Theme::DarkDefault => Theme::DarkWarm,
             Theme::DarkWarm => Theme::DarkPurple,
             Theme::DarkPurple => Theme::DarkTeal,
-            Theme::DarkTeal => Theme::LightDefault,
+            Theme::DarkTeal => Theme::Monokai,
+            Theme::Monokai => Theme::LightDefault,
             Theme::LightDefault => Theme::LightWarm,
             Theme::LightWarm => Theme::LightCool,
             Theme::LightCool => Theme::DarkDefault,
@@ -62,6 +66,7 @@ impl Theme {
             Theme::DarkWarm => "Dark Warm",
             Theme::DarkPurple => "Dark Purple",
             Theme::DarkTeal => "Dark Teal",
+            Theme::Monokai => "Monokai",
             Theme::LightDefault => "Light Default",
             Theme::LightWarm => "Light Warm",
             Theme::LightCool => "Light Cool",
@@ -75,6 +80,7 @@ impl Theme {
             Theme::DarkWarm => Palette::dark_warm(),
             Theme::DarkPurple => Palette::dark_purple(),
             Theme::DarkTeal => Palette::dark_teal(),
+            Theme::Monokai => Palette::monokai(),
             Theme::LightDefault => Palette::light_default(),
             Theme::LightWarm => Palette::light_warm(),
             Theme::LightCool => Palette::light_cool(),
@@ -191,6 +197,27 @@ impl Palette {
         }
     }
 
+    /// Monokai: Classic Sublime Text color scheme
+    /// Based on the original Monokai theme by Wimer Hazenberg
+    fn monokai() -> Self {
+        Palette {
+            primary: Color::Rgb(102, 217, 239),   // Monokai cyan/blue
+            secondary: Color::Rgb(174, 129, 255), // Monokai purple
+            tertiary: Color::Rgb(253, 151, 31),   // Monokai orange
+            healthy: Color::Rgb(166, 226, 46),    // Monokai green
+            warning: Color::Rgb(230, 219, 116),   // Monokai yellow
+            critical: Color::Rgb(249, 38, 114),   // Monokai pink/red
+            border: Color::Rgb(117, 113, 94),     // Monokai comment gray
+            text: Color::Rgb(248, 248, 242),      // Monokai foreground
+            text_muted: Color::Rgb(117, 113, 94), // Monokai comment gray
+            background: Color::Rgb(39, 40, 34),   // Monokai background
+            sparkline: Color::Rgb(102, 217, 239), // Cyan
+            gauge: Color::Rgb(166, 226, 46),      // Green
+            gauge_bg: Color::Rgb(55, 56, 48),     // Slightly lighter than bg
+            gauge_label: Color::Rgb(30, 30, 26),  // Dark for contrast on bright fills
+        }
+    }
+
     /// Light Default: Deep saturated colors on light background
     /// High contrast: dark/saturated colors for readability
     fn light_default() -> Self {
@@ -260,7 +287,7 @@ mod tests {
     #[test]
     fn test_theme_cycle() {
         let mut theme = Theme::DarkDefault;
-        for _ in 0..7 {
+        for _ in 0..8 {
             theme = theme.next();
         }
         assert_eq!(theme, Theme::DarkDefault);
