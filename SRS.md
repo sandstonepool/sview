@@ -224,7 +224,23 @@ When socket inspection fails (remote monitoring), shows aggregate data:
 - Theme persisted to config file
 - Semantic color naming (primary, healthy, warning, critical, etc.)
 
-### 3.7 Keyboard Navigation
+### 3.7 Historical Graphs View
+
+#### 3.7.1 Requirements
+- Accessible via 'g' key
+- Full-screen overlay showing sparkline graphs for key metrics
+- Displays 5 metrics with historical data:
+  - Block Height
+  - Peers Connected
+  - Memory Used (MB)
+  - Mempool TXs
+  - Sync Progress (%)
+- Shows current value in each graph title
+- Uses ring buffer history (~60 samples at 2s refresh = ~2 min)
+- Footer shows sample count and time span
+- Press Esc to close
+
+### 3.8 Keyboard Navigation
 
 | Key | Action | Context |
 |-----|--------|---------|
@@ -233,10 +249,13 @@ When socket inspection fails (remote monitoring), shows aggregate data:
 | `?` | Toggle help | Normal mode |
 | `t` | Cycle theme | Normal mode |
 | `p` | Toggle peer list | Normal mode |
+| `g` | Toggle graphs view | Normal mode |
 | `Tab` | Next node | Multi-node |
 | `Shift+Tab` | Previous node | Multi-node |
 | `1-9` | Select node by number | Multi-node |
 | `←` `→` | Switch nodes | Multi-node |
+| `↑` `↓`, `j` `k` | Navigate list | Peer list |
+| `Enter` | View peer details | Peer list |
 
 ---
 
