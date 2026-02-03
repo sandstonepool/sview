@@ -188,12 +188,37 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         vec![]
     };
 
+    // Build version string: prefer config version, fallback to detected node type
+    let version_span = if let Some(ref version) = node.config.version {
+        vec![
+            Span::styled(
+                format!("v{}", version),
+                Style::default().fg(palette.text_muted),
+            ),
+            Span::raw("  "),
+        ]
+    } else if metrics.node_type != crate::metrics::NodeType::CardanoNode {
+        // Show detected node type if not standard cardano-node
+        vec![
+            Span::styled(
+                format!("{}", metrics.node_type),
+                Style::default().fg(palette.text_muted),
+            ),
+            Span::raw("  "),
+        ]
+    } else {
+        vec![]
+    };
+
     let mut header_spans = vec![
         Span::styled(
             format!(" {} ", node.config.node_name),
             Style::default().bold().fg(palette.primary),
         ),
         role_badge,
+    ];
+    header_spans.extend(version_span);
+    header_spans.extend(vec![
         status_indicator,
         Span::raw("  │  "),
         Span::styled("Block: ", Style::default().fg(palette.text_muted)),
@@ -213,7 +238,7 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         Span::styled(" Tip  ", Style::default().fg(palette.text_muted)),
         mem_dot,
         Span::styled(" Mem", Style::default().fg(palette.text_muted)),
-    ];
+    ]);
     header_spans.extend(alert_span);
 
     let header_text = Line::from(header_spans);

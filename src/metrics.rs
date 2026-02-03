@@ -47,6 +47,10 @@ impl std::fmt::Display for NodeType {
 pub struct NodeMetrics {
     /// Detected node type
     pub node_type: NodeType,
+    /// Node software version (from build_info metric or config)
+    /// Reserved for future Prometheus build_info parsing
+    #[allow(dead_code)]
+    pub node_version: Option<String>,
     /// Current block height
     pub block_height: Option<u64>,
     /// Current slot number
