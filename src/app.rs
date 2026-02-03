@@ -30,6 +30,16 @@ pub enum AppMode {
     Graphs,
 }
 
+/// Peer data availability mode
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PeerDataMode {
+    /// Full data available via socket inspection (running locally)
+    #[default]
+    Full,
+    /// Only Prometheus aggregate data available (running remotely)
+    PrometheusOnly,
+}
+
 /// Health status indicators
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HealthStatus {
@@ -68,6 +78,8 @@ pub struct NodeState {
     pub peer_connections: Vec<PeerConnection>,
     /// Alert manager for critical notifications
     pub alert_manager: AlertManager,
+    /// Peer data availability mode (full vs prometheus-only)
+    pub peer_data_mode: PeerDataMode,
 }
 
 impl NodeState {
@@ -123,12 +135,35 @@ impl NodeState {
             last_block_time: None,
             peer_connections: Vec::new(),
             alert_manager,
+            peer_data_mode: PeerDataMode::Full, // Will be determined on first refresh
         }
     }
 
     /// Refresh peer connections via socket inspection
+    /// Sets peer_data_mode based on whether socket inspection succeeds
     pub fn refresh_peer_connections(&mut self) {
         self.peer_connections = crate::sockets::discover_peers(self.config.prom_port);
+
+        // Determine data mode: if socket inspection found peers, we have full data
+        // If no peers found but we have Prometheus connection data, we're in remote mode
+        if !self.peer_connections.is_empty() {
+            self.peer_data_mode = PeerDataMode::Full;
+        } else {
+            // Check if we have Prometheus peer metrics (indicates connection exists)
+            let has_prom_peers = self.metrics.incoming_connections.is_some()
+                || self.metrics.outgoing_connections.is_some()
+                || self.metrics.p2p.hot_peers.is_some()
+                || self.metrics.p2p.warm_peers.is_some()
+                || self.metrics.p2p.cold_peers.is_some();
+
+            if has_prom_peers {
+                // We have Prometheus data but no socket data = remote mode
+                self.peer_data_mode = PeerDataMode::PrometheusOnly;
+            } else {
+                // No data at all - could be disconnected or truly no peers
+                self.peer_data_mode = PeerDataMode::Full;
+            }
+        }
     }
 
     /// Run alert checks on current metrics
@@ -437,7 +472,9 @@ impl App {
     pub fn toggle_help(&mut self) {
         self.mode = match self.mode {
             AppMode::Normal => AppMode::Help,
-            AppMode::Help | AppMode::Peers | AppMode::PeerDetail | AppMode::Graphs => AppMode::Normal,
+            AppMode::Help | AppMode::Peers | AppMode::PeerDetail | AppMode::Graphs => {
+                AppMode::Normal
+            }
         };
     }
 

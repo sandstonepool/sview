@@ -866,6 +866,19 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 /// Draw the detailed peer list view
 fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    use crate::app::PeerDataMode;
+
+    let node = app.current_node();
+
+    // Check which mode we're in
+    match node.peer_data_mode {
+        PeerDataMode::Full => draw_peers_view_full(frame, area, app, palette),
+        PeerDataMode::PrometheusOnly => draw_peers_view_prometheus(frame, area, app, palette),
+    }
+}
+
+/// Draw full peer view with individual peer details (local mode)
+fn draw_peers_view_full(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
     // Use 90% of screen for peer list
     let popup_area = centered_rect(90, 85, area);
 
@@ -1080,6 +1093,143 @@ fn draw_peers_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) 
     );
 
     frame.render_widget(table, popup_area);
+}
+
+/// Draw Prometheus-only peer view with aggregate stats (remote mode)
+fn draw_peers_view_prometheus(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    // Use a smaller popup for the aggregate view
+    let popup_area = centered_rect(60, 70, area);
+
+    // Clear the background
+    frame.render_widget(Clear, popup_area);
+
+    let node = app.current_node();
+    let metrics = &node.metrics;
+
+    // Get connection counts
+    let incoming = metrics.incoming_connections.unwrap_or(0);
+    let outgoing = metrics.outgoing_connections.unwrap_or(0);
+    let duplex = metrics.full_duplex_connections.unwrap_or(0);
+    let unidirectional = metrics.unidirectional_connections.unwrap_or(0);
+
+    // Get peer state counts
+    let cold = metrics.p2p.cold_peers.unwrap_or(0);
+    let warm = metrics.p2p.warm_peers.unwrap_or(0);
+    let hot = metrics.p2p.hot_peers.unwrap_or(0);
+    let total_peers = cold + warm + hot;
+
+    // Calculate max for bar scaling
+    let max_state = cold.max(warm).max(hot).max(1);
+    let bar_width = 30usize;
+
+    // Build the content
+    let mut lines: Vec<Line> = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                "  Incoming Connections:  ",
+                Style::default().fg(palette.text),
+            ),
+            Span::styled(
+                format!("{}", incoming),
+                Style::default().fg(palette.primary).bold(),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Outgoing Connections:  ",
+                Style::default().fg(palette.text),
+            ),
+            Span::styled(
+                format!("{}", outgoing),
+                Style::default().fg(palette.secondary).bold(),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Duplex:        ", Style::default().fg(palette.text_muted)),
+            Span::styled(format!("{}", duplex), Style::default().fg(palette.text)),
+        ]),
+        Line::from(vec![
+            Span::styled("  Unidirectional:", Style::default().fg(palette.text_muted)),
+            Span::styled(
+                format!(" {}", unidirectional),
+                Style::default().fg(palette.text),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  ┌─ Peer States ─────────────────────────────────┐",
+            Style::default().fg(palette.border),
+        )),
+    ];
+
+    // Cold peers bar
+    let cold_bar_len = ((cold as f64 / max_state as f64) * bar_width as f64) as usize;
+    let cold_bar = "█".repeat(cold_bar_len) + &"░".repeat(bar_width - cold_bar_len);
+    lines.push(Line::from(vec![
+        Span::styled("  │ Cold:  ", Style::default().fg(palette.text)),
+        Span::styled(cold_bar, Style::default().fg(palette.tertiary)),
+        Span::styled(format!("  {:>4}", cold), Style::default().fg(palette.text)),
+        Span::styled(" │", Style::default().fg(palette.border)),
+    ]));
+
+    // Warm peers bar
+    let warm_bar_len = ((warm as f64 / max_state as f64) * bar_width as f64) as usize;
+    let warm_bar = "█".repeat(warm_bar_len) + &"░".repeat(bar_width - warm_bar_len);
+    lines.push(Line::from(vec![
+        Span::styled("  │ Warm:  ", Style::default().fg(palette.text)),
+        Span::styled(warm_bar, Style::default().fg(palette.warning)),
+        Span::styled(format!("  {:>4}", warm), Style::default().fg(palette.text)),
+        Span::styled(" │", Style::default().fg(palette.border)),
+    ]));
+
+    // Hot peers bar
+    let hot_bar_len = ((hot as f64 / max_state as f64) * bar_width as f64) as usize;
+    let hot_bar = "█".repeat(hot_bar_len) + &"░".repeat(bar_width - hot_bar_len);
+    lines.push(Line::from(vec![
+        Span::styled("  │ Hot:   ", Style::default().fg(palette.text)),
+        Span::styled(hot_bar, Style::default().fg(palette.healthy)),
+        Span::styled(format!("  {:>4}", hot), Style::default().fg(palette.text)),
+        Span::styled(" │", Style::default().fg(palette.border)),
+    ]));
+
+    lines.push(Line::from(Span::styled(
+        "  └──────────────────────────────────────────────────┘",
+        Style::default().fg(palette.border),
+    )));
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled("  Total Peers: ", Style::default().fg(palette.text)),
+        Span::styled(
+            format!("{}", total_peers),
+            Style::default().fg(palette.primary).bold(),
+        ),
+    ]));
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "  ⓘ Detailed peer info (IP, RTT, location) requires",
+        Style::default().fg(palette.text_muted).italic(),
+    )));
+    lines.push(Line::from(Span::styled(
+        "    running sview on the same machine as the node.",
+        Style::default().fg(palette.text_muted).italic(),
+    )));
+
+    let title = format!(" Peers (Prometheus) — {} total ", total_peers);
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .title_bottom(Line::from(" [p/Esc] close | [r] refresh ").centered())
+            .border_style(Style::default().fg(palette.primary)),
+    );
+
+    frame.render_widget(paragraph, popup_area);
 }
 
 /// Draw detailed view for a single selected peer
@@ -1440,7 +1590,6 @@ fn format_peer_distribution(hot: Option<u64>, warm: Option<u64>, cold: Option<u6
     format!("[{}] H:{} W:{} C:{}", bar, h, w, c)
 }
 
-
 // ============================================================================
 // Graphs View
 // ============================================================================
@@ -1462,11 +1611,11 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Min(4), // Block Height - expands
-            Constraint::Min(4), // Peers Connected - expands
-            Constraint::Min(4), // Memory Used - expands
-            Constraint::Min(4), // Mempool TXs - expands
-            Constraint::Min(4), // Sync Progress - expands
+            Constraint::Min(4),    // Block Height - expands
+            Constraint::Min(4),    // Peers Connected - expands
+            Constraint::Min(4),    // Memory Used - expands
+            Constraint::Min(4),    // Mempool TXs - expands
+            Constraint::Min(4),    // Sync Progress - expands
             Constraint::Length(3), // Footer/help - fixed, doesn't expand
         ])
         .split(popup_area);
@@ -1506,7 +1655,10 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
     frame.render_widget(peers_sparkline, chunks[1]);
 
     // Memory Used sparkline (convert to MB for display)
-    let mem_data: Vec<u64> = history.memory_used.as_slice().iter()
+    let mem_data: Vec<u64> = history
+        .memory_used
+        .as_slice()
+        .iter()
         .map(|b| b / (1024 * 1024))
         .collect();
     let current_mem_mb = node.metrics.memory_used.unwrap_or(0) / (1024 * 1024);
@@ -1514,7 +1666,10 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!(" Memory Used (MB) — Current: {} MB ", current_mem_mb))
+                .title(format!(
+                    " Memory Used (MB) — Current: {} MB ",
+                    current_mem_mb
+                ))
                 .border_style(Style::default().fg(palette.border)),
         )
         .data(&mem_data)
@@ -1563,7 +1718,8 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
         Span::styled("[Esc]", Style::default().fg(palette.secondary).bold()),
         Span::styled(" to close   |   ", Style::default().fg(palette.text_muted)),
         Span::styled(
-            format!("History: {} samples ({} seconds @ 2s refresh)", 
+            format!(
+                "History: {} samples ({} seconds @ 2s refresh)",
                 history.block_height.len(),
                 history.block_height.len() * 2
             ),
@@ -1581,4 +1737,3 @@ fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette)
         .alignment(Alignment::Center);
     frame.render_widget(help_para, chunks[5]);
 }
-

@@ -215,9 +215,7 @@ fn parse_prometheus_metrics(text: &str) -> NodeMetrics {
         // Check for build_info metric (has labels with version info)
         // Metric format: metric_name {key="value",...} value
         let trimmed = line.trim();
-        if trimmed.starts_with("cardano_node_metrics_cardano_build_info") 
-            && trimmed.contains('{')
-        {
+        if trimmed.starts_with("cardano_node_metrics_cardano_build_info") && trimmed.contains('{') {
             if let Some(build_info) = parse_build_info_labels(trimmed) {
                 metrics.build_info = build_info;
             }
@@ -760,8 +758,14 @@ cardano_node_metrics_blockNum_int 10500000
         assert_eq!(metrics.build_info.architecture, Some("x86_64".to_string()));
         assert_eq!(metrics.build_info.os_name, Some("darwin".to_string()));
         assert_eq!(metrics.build_info.compiler_name, Some("ghc".to_string()));
-        assert_eq!(metrics.build_info.compiler_version, Some("9.6.6".to_string()));
-        assert_eq!(metrics.build_info.short_version(), Some("10.6.1".to_string()));
+        assert_eq!(
+            metrics.build_info.compiler_version,
+            Some("9.6.6".to_string())
+        );
+        assert_eq!(
+            metrics.build_info.short_version(),
+            Some("10.6.1".to_string())
+        );
         // Ensure other metrics still parsed correctly
         assert_eq!(metrics.block_height, Some(10500000));
     }

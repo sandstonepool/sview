@@ -93,7 +93,8 @@ fn discover_peers_macos(prom_port: u16) -> Vec<PeerConnection> {
 
         // Only look at cardano-node connections
         let command = parts[0].to_lowercase();
-        if !command.contains("cardano") && !command.contains("dingo") && !command.contains("amaru") {
+        if !command.contains("cardano") && !command.contains("dingo") && !command.contains("amaru")
+        {
             continue;
         }
 

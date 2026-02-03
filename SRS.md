@@ -173,21 +173,37 @@ role = "bp"
 
 #### 3.5.1 Requirements
 - Accessible via 'p' key
-- Shows all connected peers with:
-  - IP address
-  - Port number
-  - Direction (IN/OUT)
-  - Location (city, country via GeoIP lookup)
-  - RTT latency (color-coded: green <50ms, yellow <100ms, red >100ms)
-  - Queue information (recv/send)
+- Two display modes based on data availability:
+  - **Full mode** (local): Individual peer details with IP, RTT, location
+  - **Prometheus-only mode** (remote): Aggregate statistics from metrics
+
+#### 3.5.2 Full Mode (Local)
+When running on the same machine as the node, shows all connected peers with:
+- IP address
+- Port number
+- Direction (IN/OUT)
+- Location (city, country via GeoIP lookup)
+- RTT latency (color-coded: green <50ms, yellow <100ms, red >100ms)
+- Queue information (recv/send)
 - Sorted by direction (incoming first), then RTT
 - Summary showing total peers, direction breakdown, average RTT
 - Peer detail view accessible by selecting peer and pressing Enter
 
-#### 3.5.2 Socket Inspection
-- Uses `ss` command to discover TCP connections
-- Parses RTT from socket info
+#### 3.5.3 Prometheus-Only Mode (Remote)
+When socket inspection fails (remote monitoring), shows aggregate data:
+- Incoming/outgoing connection counts
+- Duplex/unidirectional connection counts
+- Peer state distribution with visual bars:
+  - Cold peers (known but not promoted)
+  - Warm peers (promoted but not active)
+  - Hot peers (actively used)
+- Info message explaining detailed view requires local access
+
+#### 3.5.4 Socket Inspection
+- Uses `ss` command (Linux) or `lsof` (macOS) to discover TCP connections
+- Parses RTT from socket info (Linux only)
 - Filters connections by node port
+- Auto-detects mode based on socket inspection results
 
 ### 3.6 Theme System
 
@@ -359,6 +375,7 @@ All releases must pass:
 |---------|------|---------|
 | 1.0 | 2026-02-02 | Initial SRS based on v0.1.32 |
 | 1.1 | 2026-02-02 | Updated for v0.1.42: GeoIP integration, alert display, peer detail view |
+| 1.2 | 2026-02-03 | Updated for v0.1.55: Graceful degradation for peer view (Prometheus-only mode) |
 
 ---
 
