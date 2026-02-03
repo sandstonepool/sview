@@ -6,6 +6,8 @@ A TUI for monitoring Cardano nodes, written in Rust.
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 [![CI](https://github.com/sandstonepool/sview/actions/workflows/ci.yml/badge.svg)](https://github.com/sandstonepool/sview/actions/workflows/ci.yml)
 
+![sview demo](assets/demo.gif)
+
 ## ⚠️ Important Disclaimer
 
 **This tool was entirely created using AI coding agents.** While the code has been tested and reviewed, you should be aware of the following:
