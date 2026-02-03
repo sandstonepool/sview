@@ -1,6 +1,8 @@
 //! Socket inspection for peer discovery
 //!
-//! Uses system tools (ss) to discover connected peers and their connection details.
+//! Uses system tools to discover connected peers and their connection details.
+//! - Linux: uses `ss` command
+//! - macOS: uses `lsof` command
 
 use std::process::Command;
 use tracing::{debug, warn};
@@ -40,9 +42,122 @@ impl PeerConnection {
 
 /// Discover peer connections for a Cardano node
 ///
-/// Uses `ss` command to inspect TCP connections. Filters to likely Cardano
-/// P2P connections by excluding localhost, well-known ports, and metrics port.
+/// Uses system tools to inspect TCP connections:
+/// - Linux: `ss -tni state established`
+/// - macOS: `lsof -i -n -P`
+///
+/// Filters to likely Cardano P2P connections by excluding localhost,
+/// well-known ports, and metrics port.
 pub fn discover_peers(prom_port: u16) -> Vec<PeerConnection> {
+    // Detect OS and use appropriate command
+    if cfg!(target_os = "macos") {
+        discover_peers_macos(prom_port)
+    } else {
+        discover_peers_linux(prom_port)
+    }
+}
+
+/// Discover peers on macOS using lsof
+fn discover_peers_macos(prom_port: u16) -> Vec<PeerConnection> {
+    let mut peers = Vec::new();
+
+    // Use lsof to get TCP connections
+    // -i = network connections, -n = no DNS resolution, -P = no port names
+    let output = match Command::new("lsof")
+        .args(["-i", "TCP", "-n", "-P", "-sTCP:ESTABLISHED"])
+        .output()
+    {
+        Ok(output) => output,
+        Err(e) => {
+            warn!("Failed to run lsof command: {}", e);
+            return peers;
+        }
+    };
+
+    if !output.status.success() {
+        debug!("lsof command returned non-zero (may need permissions)");
+        return peers;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse lsof output
+    // Format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
+    // NAME is like: 192.168.1.1:3001->10.0.0.1:12345 (ESTABLISHED)
+    for line in stdout.lines().skip(1) {
+        // Skip header
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 9 {
+            continue;
+        }
+
+        // Only look at cardano-node connections
+        let command = parts[0].to_lowercase();
+        if !command.contains("cardano") && !command.contains("dingo") && !command.contains("amaru") {
+            continue;
+        }
+
+        // Parse the NAME field (last column): local->peer
+        let name = parts[8];
+        if !name.contains("->") {
+            continue;
+        }
+
+        let conn_parts: Vec<&str> = name.split("->").collect();
+        if conn_parts.len() != 2 {
+            continue;
+        }
+
+        let local = conn_parts[0];
+        let peer = conn_parts[1].trim_end_matches([')', '(']);
+
+        // Parse local address:port
+        let (_local_ip, local_port) = match parse_address(local) {
+            Some(v) => v,
+            None => continue,
+        };
+
+        // Parse peer address:port
+        let (peer_ip, peer_port) = match parse_address(peer) {
+            Some(v) => v,
+            None => continue,
+        };
+
+        // Skip localhost connections
+        if peer_ip == "127.0.0.1" || peer_ip == "::1" || peer_ip.starts_with("localhost") {
+            continue;
+        }
+
+        // Skip well-known ports and metrics port
+        if EXCLUDED_PORTS.contains(&peer_port)
+            || EXCLUDED_PORTS.contains(&local_port)
+            || peer_port == prom_port
+            || local_port == prom_port
+        {
+            continue;
+        }
+
+        // Determine direction: if local port > 10000, likely outgoing
+        let incoming = local_port < 10000 || local_port == 3001 || local_port == 6000;
+
+        peers.push(PeerConnection {
+            ip: peer_ip,
+            port: peer_port,
+            local_port,
+            incoming,
+            rtt_ms: None, // lsof doesn't provide RTT
+            state: "ESTABLISHED".to_string(),
+            recv_q: 0,
+            send_q: 0,
+        });
+    }
+
+    debug!("Discovered {} peers via lsof (macOS)", peers.len());
+    peers
+}
+
+/// Discover peers on Linux using ss
+fn discover_peers_linux(prom_port: u16) -> Vec<PeerConnection> {
     let mut peers = Vec::new();
 
     // Use ss to get TCP connections with extended info
