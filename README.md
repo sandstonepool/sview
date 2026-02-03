@@ -23,7 +23,7 @@ If you discover a security issue, please report it responsibly to the project ma
 
 ## Overview
 
-sview is a terminal-based monitoring tool for Cardano nodes. It provides real-time
+sview is a terminal-based monitoring tool for [Cardano nodes](https://github.com/IntersectMBO/cardano-node). It provides real-time
 metrics and status information by connecting to a node's Prometheus metrics endpoint.
 
 Inspired by [nview](https://github.com/blinklabs-io/nview), sview is built from the
