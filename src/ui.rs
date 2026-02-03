@@ -204,15 +204,6 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
             ),
             Span::raw("  "),
         ]
-    } else if let Some(ref version) = node.config.version {
-        // Manually configured in config.toml
-        vec![
-            Span::styled(
-                format!("v{}", version),
-                Style::default().fg(palette.text_muted),
-            ),
-            Span::raw("  "),
-        ]
     } else if metrics.node_type != crate::metrics::NodeType::CardanoNode {
         // Show detected node type if not standard cardano-node
         vec![

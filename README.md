@@ -110,7 +110,6 @@ name = "Block Producer"
 host = "10.0.0.3"
 port = 12798
 role = "bp"
-version = "10.1.4"  # Optional: displayed in header
 ```
 
 Then just run:

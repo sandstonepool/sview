@@ -133,10 +133,6 @@ pub struct NodeConfig {
 
     /// Network override for this node
     pub network: Option<String>,
-
-    /// Node software version (e.g., "10.1.4")
-    /// If not specified, sview will try to auto-detect from metrics
-    pub version: Option<String>,
 }
 
 /// Node role for display/behavior hints
@@ -192,8 +188,6 @@ pub struct NodeRuntimeConfig {
     pub port: u16,
     pub role: NodeRole,
     pub network: String,
-    /// Optional node version from config
-    pub version: Option<String>,
 }
 
 impl NodeRuntimeConfig {
@@ -247,7 +241,6 @@ impl AppConfig {
                 network: args
                     .network
                     .unwrap_or_else(|| file_config.global.network.clone()),
-                version: None, // CLI mode doesn't support version specification
             }]
         } else {
             // Multi-node mode from config file
@@ -263,7 +256,6 @@ impl AppConfig {
                         .network
                         .clone()
                         .unwrap_or_else(|| file_config.global.network.clone()),
-                    version: n.version.clone(),
                 })
                 .collect();
 
@@ -315,8 +307,6 @@ pub struct Config {
     pub refresh_interval_secs: u64,
     pub history_length: usize,
     pub epoch_length: u64,
-    /// Optional node version from config
-    pub version: Option<String>,
 }
 
 impl Config {
@@ -331,7 +321,6 @@ impl Config {
             refresh_interval_secs: app_config.refresh_interval.as_secs(),
             history_length: app_config.history_length,
             epoch_length: app_config.epoch_length,
-            version: node.version.clone(),
         }
     }
 
@@ -363,7 +352,6 @@ impl Default for Config {
             refresh_interval_secs: 2,
             history_length: 60,
             epoch_length: 432000,
-            version: None,
         }
     }
 }
