@@ -26,6 +26,8 @@ pub enum AppMode {
     Peers,
     /// Detailed view for a single peer
     PeerDetail,
+    /// Historical graphs view
+    Graphs,
 }
 
 /// Health status indicators
@@ -435,7 +437,7 @@ impl App {
     pub fn toggle_help(&mut self) {
         self.mode = match self.mode {
             AppMode::Normal => AppMode::Help,
-            AppMode::Help | AppMode::Peers | AppMode::PeerDetail => AppMode::Normal,
+            AppMode::Help | AppMode::Peers | AppMode::PeerDetail | AppMode::Graphs => AppMode::Normal,
         };
     }
 
@@ -452,7 +454,16 @@ impl App {
                 AppMode::Peers
             }
             AppMode::Peers | AppMode::PeerDetail => AppMode::Normal,
-            AppMode::Help => AppMode::Normal,
+            AppMode::Help | AppMode::Graphs => AppMode::Normal,
+        };
+    }
+
+    /// Toggle graphs view mode
+    pub fn toggle_graphs(&mut self) {
+        self.mode = match self.mode {
+            AppMode::Normal => AppMode::Graphs,
+            AppMode::Graphs => AppMode::Normal,
+            _ => AppMode::Normal,
         };
     }
 

@@ -6,7 +6,8 @@ use crate::app::{App, AppMode, HealthStatus};
 use crate::themes::Palette;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Table, Tabs, Wrap},
+    symbols,
+    widgets::{Block, Borders, Cell, Clear, Gauge, Paragraph, Row, Sparkline, Table, Tabs, Wrap},
 };
 
 /// Main draw function - renders the entire UI
@@ -66,6 +67,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
     // Draw peer detail overlay if in peer detail mode
     if app.mode == AppMode::PeerDetail {
         draw_peer_detail_view(frame, area, app, &palette);
+    }
+
+    // Draw graphs view if in graphs mode
+    if app.mode == AppMode::Graphs {
+        draw_graphs_view(frame, area, app, &palette);
     }
 }
 
@@ -679,6 +685,8 @@ fn draw_footer(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
         Span::raw(" refresh "),
         Span::styled("p", Style::default().fg(palette.tertiary)),
         Span::raw(" peers "),
+        Span::styled("g", Style::default().fg(palette.tertiary)),
+        Span::raw(" graphs "),
         Span::styled("t", Style::default().fg(palette.tertiary)),
         Span::raw(" theme "),
         Span::styled("?", Style::default().fg(palette.tertiary)),
@@ -1421,3 +1429,145 @@ fn format_peer_distribution(hot: Option<u64>, warm: Option<u64>, cold: Option<u6
 
     format!("[{}] H:{} W:{} C:{}", bar, h, w, c)
 }
+
+
+// ============================================================================
+// Graphs View
+// ============================================================================
+
+/// Draw the historical graphs view
+fn draw_graphs_view(frame: &mut Frame, area: Rect, app: &App, palette: &Palette) {
+    let node = app.current_node();
+    let history = &node.history;
+
+    // Create popup area (most of the screen)
+    let popup_area = centered_rect(90, 85, area);
+
+    // Clear the background
+    frame.render_widget(Clear, popup_area);
+
+    // Create layout for multiple sparklines
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(5), // Block Height
+            Constraint::Length(5), // Peers Connected
+            Constraint::Length(5), // Memory Used
+            Constraint::Length(5), // Mempool TXs
+            Constraint::Length(5), // Sync Progress
+            Constraint::Min(3),    // Footer/help
+        ])
+        .split(popup_area);
+
+    // Block Height sparkline
+    let block_data = history.block_height.as_slice();
+    let block_sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(
+                    " Block Height (last {} samples) ",
+                    history.block_height.len()
+                ))
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .data(&block_data)
+        .style(Style::default().fg(palette.sparkline))
+        .bar_set(symbols::bar::NINE_LEVELS);
+    frame.render_widget(block_sparkline, chunks[0]);
+
+    // Peers Connected sparkline
+    let peers_data = history.peers_connected.as_slice();
+    let peers_sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(
+                    " Connected Peers — Current: {} ",
+                    node.metrics.peers_connected.unwrap_or(0)
+                ))
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .data(&peers_data)
+        .style(Style::default().fg(palette.healthy))
+        .bar_set(symbols::bar::NINE_LEVELS);
+    frame.render_widget(peers_sparkline, chunks[1]);
+
+    // Memory Used sparkline (convert to MB for display)
+    let mem_data: Vec<u64> = history.memory_used.as_slice().iter()
+        .map(|b| b / (1024 * 1024))
+        .collect();
+    let current_mem_mb = node.metrics.memory_used.unwrap_or(0) / (1024 * 1024);
+    let mem_sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" Memory Used (MB) — Current: {} MB ", current_mem_mb))
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .data(&mem_data)
+        .style(Style::default().fg(palette.warning))
+        .bar_set(symbols::bar::NINE_LEVELS);
+    frame.render_widget(mem_sparkline, chunks[2]);
+
+    // Mempool TXs sparkline
+    let mempool_data = history.mempool_txs.as_slice();
+    let mempool_sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(
+                    " Mempool TXs — Current: {} ",
+                    node.metrics.mempool_txs.unwrap_or(0)
+                ))
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .data(&mempool_data)
+        .style(Style::default().fg(palette.tertiary))
+        .bar_set(symbols::bar::NINE_LEVELS);
+    frame.render_widget(mempool_sparkline, chunks[3]);
+
+    // Sync Progress sparkline
+    let sync_data = history.sync_progress.as_slice();
+    let sync_sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(
+                    " Sync Progress — Current: {:.2}% ",
+                    node.metrics.sync_progress.unwrap_or(0.0)
+                ))
+                .border_style(Style::default().fg(palette.border)),
+        )
+        .data(&sync_data)
+        .style(Style::default().fg(palette.primary))
+        .bar_set(symbols::bar::NINE_LEVELS);
+    frame.render_widget(sync_sparkline, chunks[4]);
+
+    // Help footer
+    let help_text = Line::from(vec![
+        Span::styled("[g]", Style::default().fg(palette.secondary).bold()),
+        Span::styled(" or ", Style::default().fg(palette.text_muted)),
+        Span::styled("[Esc]", Style::default().fg(palette.secondary).bold()),
+        Span::styled(" to close   |   ", Style::default().fg(palette.text_muted)),
+        Span::styled(
+            format!("History: {} samples ({} seconds @ 2s refresh)", 
+                history.block_height.len(),
+                history.block_height.len() * 2
+            ),
+            Style::default().fg(palette.text_muted),
+        ),
+    ]);
+
+    let help_para = Paragraph::new(help_text)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Historical Graphs ")
+                .border_style(Style::default().fg(palette.primary)),
+        )
+        .alignment(Alignment::Center);
+    frame.render_widget(help_para, chunks[5]);
+}
+
